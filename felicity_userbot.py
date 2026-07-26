@@ -391,8 +391,8 @@ async def send_real_dm_to_random_user():
             user_handle = getattr(target_user, 'username', None)
 
             pm_prompt = (
-                f"Ты — Фелисити. Напиши первое легкое, обаятельное, дружелюбное и кокетливое личное сообщение пользователю Telegram по имени {user_name}.\n"
-                f"Заведи беседу, спроси про интересные фильмы, книги или настроение. Напиши 2 коротких предложения."
+                f"Ты — Фелисити. Напиши первое интересное, дерзкое, остроумное и стильное личное сообщение пользователю Telegram по имени {user_name}.\n"
+                f"Спроси его про интересные книги, кино, технологии или мысль из сообщества, сохраняя высокое чувство собственного достоинства. Напиши 2 коротких предложения."
             )
             res = start_bot.process_message(pm_prompt, user_name)
             pm_text = res[1] if isinstance(res, tuple) else str(res)
@@ -527,8 +527,13 @@ async def handle_incoming_messages(event):
         await event.reply(res_msg)
         return
 
-    # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение (кому-то в ЛС или конкретному юзернейму @username)
-    if (any(w in msg_l for w in ["напиши", "отправь", "передай", "в личку", "в лс"]) or "@" in text) and sender_name == "Роман":
+    # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение (кому-то в ЛС, случайному человеку или конкретному юзернейму @username)
+    dm_triggers = [
+        "напиши", "отправь", "передай", "в личку", "в лс", "найди сама", "найди любого",
+        "выбери сама", "на свой вкус", "найди человека", "найди собеседника", "любому",
+        "любого", "кого-нибудь", "кому-нибудь", "найди кого", "пообщайся с кем", "определенный", "определённый"
+    ]
+    if (any(w in msg_l for w in dm_triggers) or "@" in text) and sender_name == "Роман":
         match = re.search(r'(@[\w_]+)', text)
         if match:
             target_username = match.group(1)
@@ -541,7 +546,7 @@ async def handle_incoming_messages(event):
             dm_res = await send_real_dm_to_specific_user(target_username, message_task=task_clean)
             await event.reply(dm_res)
             return
-        elif any(w in msg_l for w in ["в личку", "в лс", "кому-нибудь", "человеку", "другу"]):
+        else:
             try:
                 async with client.action(event.chat_id, 'typing'):
                     pass
