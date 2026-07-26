@@ -276,6 +276,8 @@ def save_last_pm_time(ts):
     except Exception:
         pass
 
+TARGET_USER_HANDLE = "romqqqa1"
+
 async def auto_send_proactive_pm_to_roman():
     """
     100% СПОНТАННЫЙ ИНИЦИАТИВНЫЙ ДВИЖОК:
