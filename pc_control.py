@@ -10,10 +10,16 @@ import time
 import re
 import urllib.parse
 import psutil
-import pyautogui
-from PIL import ImageGrab
+try:
+    import pyautogui
+    pyautogui.FAILSAFE = False
+except Exception:
+    pyautogui = None
 
-pyautogui.FAILSAFE = False
+try:
+    from PIL import ImageGrab
+except Exception:
+    ImageGrab = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
