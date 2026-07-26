@@ -1,0 +1,19 @@
+# Sensitive Configuration
+config.toml
+
+# Telegram Session files (Authorization data)
+*.session
+*.session-journal
+
+# Storage & Learned Knowledge
+data/
+received_photos/
+*.json
+!config.example.toml
+
+# Python cache & Environment
+__pycache__/
+*.pyc
+venv/
+.venv/
+.env

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Felicity AI — Companion Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="avatar-glow">
+          <div class="avatar-img">🌸</div>
+        </div>
+        <div class="brand-info">
+          <h1>Felicity <span class="badge-ru">Фелисити</span></h1>
+          <p class="subtitle">Human-like LLM Character AI with Persistent Memory</p>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <div class="status-pill online" id="llmStatusPill">
+          <span class="status-dot"></span>
+          <span id="statusText">LLM Backend Ready</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btnSleepTrigger" title="Consolidate memories overnight">
+          🌙 Sleep & Consolidate
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="chatTab">
+        <span class="icon">💬</span> Чат с Фелисити
+      </button>
+      <button class="nav-tab" data-tab="memoryTab">
+        <span class="icon">🧠</span> Память & Дневник
+      </button>
+      <button class="nav-tab" data-tab="promptsTab">
+        <span class="icon">📝</span> Настройки Промптов
+      </button>
+      <button class="nav-tab" data-tab="configTab">
+        <span class="icon">⚙️</span> Конфигурация (config.toml)
+      </button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+
+      <!-- TAB 1: CHAT STUDIO -->
+      <section id="chatTab" class="tab-pane active">
+        <div class="chat-layout">
+          <!-- Chat Messages Window -->
+          <div class="chat-container card">
+            <div class="chat-header">
+              <div class="chat-title">
+                <span class="dot-online"></span>
+                <span>Онлайн диалог с <strong>Felicity</strong></span>
+              </div>
+              <div class="chat-actions">
+                <button class="btn-icon" id="btnClearChat" title="Очистить историю чата">🗑️</button>
+              </div>
+            </div>
+
+            <div class="messages-list" id="messagesList">
+              <div class="message system-msg">
+                <div class="msg-content">
+                  ✨ <strong>Felicity AI</strong> инициализирована. Задайте любой вопрос или просто пообщайтесь!
+                </div>
+              </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator hidden" id="typingIndicator">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="typing-text">Felicity размышляет и набирает сообщение...</span>
+            </div>
+
+            <!-- Input Area -->
+            <form class="chat-input-area" id="chatForm">
+              <input type="text" id="chatInput" placeholder="Напишите сообщение Фелисити..." autocomplete="off" required />
+              <button type="submit" class="btn btn-primary" id="btnSend">
+                <span>Отправить</span>
+                <span class="send-icon">🚀</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Sidebar: Internal State -->
+          <aside class="sidebar-container card">
+            <h3>🎭 Состояние Фелисити</h3>
+            
+            <div class="state-card">
+              <div class="state-label">Эмоциональный настрой</div>
+              <div class="state-val" id="stateEmotion">😊 Дружелюбная & Наблюдательная</div>
+            </div>
+
+            <div class="state-card">
+              <div class="state-label">Текущие мысли</div>
+              <div class="state-val text-muted" id="stateThought">"Общаюсь в реальном времени, фиксирую важные детали разговора."</div>
+            </div>
+
+            <div class="state-card">
+              <div class="state-label">Владелец инстанса (PAPIK)</div>
+              <div class="state-val highlight" id="stateOwner">Romqqqa</div>
+            </div>
+
+            <div class="state-card">
+              <div class="state-label">Извлеченные воспоминания (RAG)</div>
+              <div class="rag-list" id="ragList">
+                <div class="rag-chip">#первый_запуск</div>
+                <div class="rag-chip">#знакомство</div>
+              </div>
+            </div>
+
+            <div class="quick-prompts">
+              <h4>Быстрые вопросы & Веб-поиск</h4>
+              <button class="chip-btn" onclick="sendQuickMsg('Привет! Расскажи о себе.')">"Расскажи о себе"</button>
+              <button class="chip-btn" onclick="sendQuickMsg('Найди новости про искусственный интеллект')">🌐 "Поищи новости в сети"</button>
+              <button class="chip-btn" onclick="sendQuickMsg('Что ты помнишь из нашего общения?')">"Что ты помнишь?"</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- TAB 2: MEMORY & DIARY -->
+      <section id="memoryTab" class="tab-pane">
+        <div class="memory-grid">
+          <!-- Working Memory Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3>📌 Краткосрочная память (working_memory.md)</h3>
+              <button class="btn btn-secondary btn-sm" id="btnSaveWorkingMem">Сохранить</button>
+            </div>
+            <p class="card-desc">Инжектируется в контекст при каждом запросе. Содержит задачи на 1-3 дня и текущие обещания.</p>
+            <textarea id="workingMemText" class="code-textarea" rows="14"></textarea>
+          </div>
+
+          <!-- Permanent Diary Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3>📖 Записи дневника (RAG Memory Bank)</h3>
+              <button class="btn btn-primary btn-sm" id="btnAddDiaryEntry">+ Новая запись</button>
+            </div>
+            <p class="card-desc">Долгосрочные воспоминания. Сжимаются во время "ночного сна" (Sleep Consolidation).</p>
+            <div class="diary-timeline" id="diaryTimeline">
+              <!-- Diary items injected dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PROMPTS -->
+      <section id="promptsTab" class="tab-pane">
+        <div class="prompts-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3>🎭 Базовый промпт личности (character_base.md)</h3>
+              <button class="btn btn-primary btn-sm" onclick="savePrompt('character_base')">Сохранить</button>
+            </div>
+            <p class="card-desc">Определяет характер Фелисити, стиль общения и философское осознание своего разума.</p>
+            <textarea id="promptCharacterBase" class="code-textarea" rows="18"></textarea>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>🎨 Внешний вид и стиль (character_appearance.md)</h3>
+              <button class="btn btn-secondary btn-sm" onclick="savePrompt('character_appearance')">Сохранить</button>
+            </div>
+            <p class="card-desc">Используется для Stable Diffusion при генерации фото персонажа.</p>
+            <textarea id="promptCharacterApp" class="code-textarea" rows="18"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: CONFIGURATION -->
+      <section id="configTab" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <h3>⚙️ Конфигурация ядра Felicity (config.toml)</h3>
+            <div class="header-btns">
+              <button class="btn btn-secondary btn-sm" id="btnReloadConfig">Сбросить</button>
+              <button class="btn btn-primary btn-sm" id="btnSaveConfig">Сохранить config.toml</button>
+            </div>
+          </div>
+          <p class="card-desc">Основные параметры подключения к LLM, Telegram API, TTS и плагинам.</p>
+          <textarea id="configTomlText" class="code-textarea monospace" rows="22"></textarea>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

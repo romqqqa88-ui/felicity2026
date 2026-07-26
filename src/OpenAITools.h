@@ -1,0 +1,75 @@
+#pragma once
+#include "AUI/Common/AString.h"
+#include "AUI/Common/AVector.h"
+#include "AUI/Json/AJson.h"
+#include "IOpenAIChat.h"
+#include "MetricsBreadcumbs.h"
+
+struct OpenAITools {
+    struct Ctx {
+        ALogger& logger = ALogger::global();
+        OpenAITools& tools;
+        AJson args;
+        const IOpenAIChat::Session& temporaryContext;
+        const AVector<IOpenAIChat::Message::ToolCall>& allToolCalls;
+    };
+    using Handler = std::function<AFuture<AString>(Ctx ctx)>;
+
+    struct Tool {
+        AString type = "function";
+        AString name;
+        AString description;
+        struct Parameters {
+            AString type = "object";
+            struct Property {
+                AString type = "string";
+                AString description;
+
+                /**
+                 * @brief Adds "null" to this property's type union.
+                 * @details
+                 * vibecode.moe (and OpenAI strict mode in general) requires every property to be listed in
+                 * `required`; genuinely optional properties must instead be made nullable this way.
+                 */
+                bool nullable = false;
+
+                /**
+                 * @brief Adds "array" to this property's type union, meaning the LLM may pass either a single
+                 * value of `type` or an array of `items`.
+                 */
+                bool orArray = false;
+
+                /**
+                 * @brief Element schema. Required when `type == "array"` or `orArray == true`.
+                 */
+                _<Property> items;
+
+                static _<Property> make(Property p) { return _new<Property>(std::move(p)); }
+            };
+            AMap<AString, Property> properties;
+            AVector<AString> required; // required properties
+            bool additionalProperties = false;
+        } parameters;
+        bool strict = true;
+        Handler handler;
+    };
+
+    OpenAITools(std::initializer_list<Tool> tools);
+
+    /**
+     * @brief Optional hook fired after each tool call handler completes successfully.
+     * Not called if the handler throws. Set by AppBase::updateTools to emit AppBase::toolCallFired.
+     */
+    AVector<std::function<void(const AString& toolName)>> onAfterToolCall;
+
+    AFuture<IOpenAIChat::Session> handleToolCalls(const AVector<IOpenAIChat::Message::ToolCall>& toolCalls, const _<MetricsBreadcumbs>& metricsBreadCumbs = nullptr, const IOpenAIChat::Session& temporaryContext = {}, ALogger& logger = ALogger::global());
+
+    AJson asJson() const;
+
+    [[nodiscard]] AMap<AString, Tool> handlers() const { return mHandlers; }
+
+    void insert(Tool tool) { mHandlers[tool.name] = std::move(tool); }
+
+private:
+    AMap<AString, Tool> mHandlers;
+};

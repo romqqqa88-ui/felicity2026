@@ -1,0 +1,9 @@
+[ai]
+provider = "gptunnel"
+api_key = "YOUR_GPTUNNEL_API_KEY_HERE"
+
+[telegram]
+api_id = "YOUR_TELEGRAM_API_ID_HERE"
+api_hash = "YOUR_TELEGRAM_API_HASH_HERE"
+phone = "YOUR_PHONE_NUMBER_HERE"
+target_username = "romqqqa1"
