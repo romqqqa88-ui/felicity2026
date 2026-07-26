@@ -183,24 +183,26 @@ def try_call_gemini_api(user_msg, sender_name="Роман"):
             "Content-Type": "application/json"
         }
         for model_name in ["gpt-4o", "gpt-4o-mini", "mistral-large", "command-r-plus"]:
-            payload = json.dumps({
-                "model": model_name,
-                "messages": messages_payload,
-                "temperature": 0.8
-            }).encode('utf-8')
-            try:
-                req = urllib.request.Request(url, data=payload, headers=headers)
-                with urllib.request.urlopen(req, timeout=12) as resp:
-                    data = json.loads(resp.read().decode('utf-8'))
-                    reply = data['choices'][0]['message']['content'].strip()
-                    if is_refusal(reply):
-                        print(f" ⚠️ Intercepted refusal from model {model_name}, trying next uncensored model...")
-                        continue
-                    TG_CHAT_HISTORY.append({"role": "user", "content": user_msg})
-                    TG_CHAT_HISTORY.append({"role": "assistant", "content": reply})
-                    return reply
-            except Exception as e:
-                print(f"GPTunnel API ({model_name}) error: {e}")
+            for attempt in range(2):
+                payload = json.dumps({
+                    "model": model_name,
+                    "messages": messages_payload,
+                    "temperature": 0.8
+                }).encode('utf-8')
+                try:
+                    req = urllib.request.Request(url, data=payload, headers=headers)
+                    with urllib.request.urlopen(req, timeout=25) as resp:
+                        data = json.loads(resp.read().decode('utf-8'))
+                        reply = data['choices'][0]['message']['content'].strip()
+                        if is_refusal(reply):
+                            print(f" ⚠️ Intercepted refusal from model {model_name}, trying next uncensored model...")
+                            break
+                        TG_CHAT_HISTORY.append({"role": "user", "content": user_msg})
+                        TG_CHAT_HISTORY.append({"role": "assistant", "content": reply})
+                        return reply
+                except Exception as e:
+                    print(f"GPTunnel API ({model_name}, attempt {attempt+1}) error: {e}")
+                    time.sleep(0.5)
 
     # 1. Try GitHub Models API if key is GitHub Token (ghp_... / github_pat_...)
     if "ghp_" in GEMINI_API_KEY or "github_pat_" in GEMINI_API_KEY:
@@ -613,10 +615,14 @@ def process_message(text, sender_name="Роман"):
         else:
             return "TEXT", f"{sender_name}, я попыталась найти информацию про **«{q_clean}»**, но ответ пока пустой."
 
-    # Fallback if LLM API returned None
-    words = [w.strip(',.!?') for w in text.split() if len(w) > 3]
-    key_word = words[-1] if words else text
-    dynamic_reply = f"{sender_name}, рассматриваю твою мысль про «{key_word}»! Давай обменяемся мнениями или я посмотрю информацию в сети!"
+    # Natural Friendly In-Character Fallback
+    import random
+    natural_fallbacks = [
+        f"Задумалась на секундочку! Что скажешь, {sender_name}?",
+        f"Я тут! Слушаю тебя очень внимательно, {sender_name} ✨",
+        f"{sender_name}, расскажи поподробнее, мне очень интересно!"
+    ]
+    dynamic_reply = random.choice(natural_fallbacks)
     TG_CHAT_HISTORY.append({"role": "user", "content": text})
     TG_CHAT_HISTORY.append({"role": "assistant", "content": dynamic_reply})
     return "TEXT", dynamic_reply
