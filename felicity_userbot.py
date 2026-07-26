@@ -211,7 +211,7 @@ def load_dynamic_channels():
                     return data
         except Exception:
             pass
-    return ["habr_com", "rbc_news", "mash", "kinopoisk", "postnauka", "tproger"]
+    return ["kinofilm_chat", "book_chat_ru", "it_chat_ru", "chat_films", "discussion_ru", "habr_com", "rbc_news", "mash", "kinopoisk", "postnauka", "tproger"]
 
 def save_dynamic_channel(channel_username):
     channels = load_dynamic_channels()
@@ -408,29 +408,30 @@ async def send_real_dm_to_random_user():
                 last_err = str(e)
 
         if valid_senders:
-            target_user = random.choice(valid_senders)
-            user_name = getattr(target_user, 'first_name', 'пользователь') or 'пользователь'
-            user_handle = getattr(target_user, 'username', None)
-            
-            user_ref = f"@{user_handle}" if user_handle else f"{user_name}"
+            random.shuffle(valid_senders)
+            for target_user in valid_senders[:10]:
+                user_name = getattr(target_user, 'first_name', 'пользователь') or 'пользователь'
+                user_handle = getattr(target_user, 'username', None)
+                
+                user_ref = f"@{user_handle}" if user_handle else f"{user_name}"
 
-            pm_prompt = (
-                f"Ты — Фелисити. Напиши первое интересное, адекватное, стильное и легкое личное сообщение пользователю Telegram по имени {user_name}.\n"
-                f"Заведи диалог про кино, книги или вечерние темы. Напиши 2 коротких предложения."
-            )
-            res = start_bot.process_message(pm_prompt, user_name)
-            pm_text = res[1] if isinstance(res, tuple) else str(res)
+                pm_prompt = (
+                    f"Ты — Фелисити. Напиши первое интересное, адекватное, стильное и легкое личное сообщение пользователю Telegram по имени {user_name}.\n"
+                    f"Заведи диалог про кино, книги или вечерние темы. Напиши 2 коротких предложения."
+                )
+                res = start_bot.process_message(pm_prompt, user_name)
+                pm_text = res[1] if isinstance(res, tuple) else str(res)
 
-            try:
-                # НАСТОЯЩАЯ ФИЗИЧЕСКАЯ ОТПРАВКА СООБЩЕНИЯ В TELEGRAM!
-                sent = await client.send_message(target_user.id, pm_text)
-                print(f" 🎯 [Real DM Success] Сообщение реально отправлено {user_ref} (msg_id: {sent.id})!")
-                return f"Я только что РЕАЛЬНО зашла в личные сообщения и написала пользователю {user_ref} ({user_name}) в Telegram! 💌\n\nВот текст сообщения, которое я ему отправила:\n«{pm_text}»"
-            except Exception as send_err:
-                print(f"Error sending DM to {user_ref}: {send_err}")
-                last_err = str(send_err)
+                try:
+                    # НАСТОЯЩАЯ ФИЗИЧЕСКАЯ ОТПРАВКА СООБЩЕНИЯ В TELEGRAM!
+                    sent = await client.send_message(target_user.id, pm_text)
+                    print(f" 🎯 [Real DM Success] Сообщение реально отправлено {user_ref} (msg_id: {sent.id})!")
+                    return f"Я только что РЕАЛЬНО зашла в личные сообщения и написала пользователю {user_ref} ({user_name}) в Telegram! 💌\n\nВот текст сообщения, которое я ему отправила:\n«{pm_text}»"
+                except Exception as send_err:
+                    print(f"Error sending DM to {user_ref}: {send_err}")
+                    last_err = str(send_err)
 
-    return f"Попыталась найти собеседника в группах, но Telegram вернул ограничение или у них закрыты личные сообщения. Напиши мне конкретный юзернейм (@username), и я сразу заделюсь с ним!"
+    return f"Попыталась найти собеседника в группах, но у кандидатов закрыты личные сообщения ({last_err}). Напиши мне конкретный юзернейм (@username), и я сразу напишу ему!"
 
 async def send_real_dm_to_specific_user(target_user_str, message_task=None):
     """
