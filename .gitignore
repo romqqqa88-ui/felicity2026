@@ -11,6 +11,11 @@ received_photos/
 *.json
 !config.example.toml
 
+# Dist & Build outputs
+dist/
+build/
+*.exe
+
 # Python cache & Environment
 __pycache__/
 *.pyc
