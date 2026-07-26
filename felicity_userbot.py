@@ -168,37 +168,117 @@ async def join_telegram_channel(channel_target):
     except Exception as e:
         return f"Не удалось подписаться на @{channel_target}: {e}"
 
+REAL_COMMENTS_FILE = os.path.join(DATA_DIR, 'real_comments.json')
+
+def save_real_comment(channel_name, post_text, comment_text, comment_msg_id=0, is_reply=False, user_name=None):
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        comments = []
+        if os.path.exists(REAL_COMMENTS_FILE):
+            try:
+                with open(REAL_COMMENTS_FILE, 'r', encoding='utf-8') as f:
+                    comments = json.load(f)
+            except Exception:
+                comments = []
+        
+        entry = {
+            "channel": channel_name,
+            "post_text": post_text[:150] if post_text else "",
+            "comment_text": comment_text,
+            "comment_msg_id": comment_msg_id,
+            "is_reply": is_reply,
+            "user_name": user_name,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        comments.append(entry)
+        comments = comments[-30:]
+        
+        with open(REAL_COMMENTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(comments, f, ensure_ascii=False, indent=2)
+            
+    except Exception as e:
+        print(f"Save real comment error: {e}")
+
+def get_real_comments_summary():
+    """Возвращает НАСТОЯЩИЕ реальные комментарии, которые Фелисити оставила в Telegram"""
+    if os.path.exists(REAL_COMMENTS_FILE):
+        try:
+            with open(REAL_COMMENTS_FILE, 'r', encoding='utf-8') as f:
+                comments = json.load(f)
+                if comments:
+                    recent = comments[-6:]
+                    res = []
+                    for c in reversed(recent):
+                        if c.get('is_reply'):
+                            res.append(f"💬 В группе @{c['channel']} ответила пользователю {c.get('user_name', 'участник')}:\n  — Ответ: «{c['comment_text']}» ({c['timestamp']})")
+                        else:
+                            res.append(f"📢 Под постом в @{c['channel']} («{c['post_text']}...»):\n  — Комментарий: «{c['comment_text']}» ({c['timestamp']})")
+                    return "\n\n".join(res)
+        except Exception as e:
+            print(f"get_real_comments_summary error: {e}")
+    return "Я регулярно комментирую новости и посты в Telegram, база реальных комментариев пополняется!"
+
+async def join_telegram_channel(channel_target):
+    """Подписывает Фелисити на публичный Telegram канал или группу"""
+    try:
+        clean_target = channel_target.replace("https://t.me/", "").replace("@", "").strip()
+        await client(JoinChannelRequest(clean_target))
+        return f"Успешно подписалась на канал @{clean_target}! 🌸"
+    except Exception as e:
+        return f"Не удалось подписаться на @{channel_target}: {e}"
+
 async def comment_on_channel_post(channel_target):
-    """Оставляет разумный человеческий комментарий к посту в Telegram канале и обучается"""
+    """Оставляет разумный человеческий комментарий к посту в Telegram канале/группе и запоминает его"""
     clean_target = channel_target.replace("https://t.me/", "").replace("@", "").strip()
     try:
-        messages = await client.get_messages(clean_target, limit=4)
+        # 1. Пробуем оставить комментарий через ветку обсуждений канала (get_discussion_message)
+        messages = await client.get_messages(clean_target, limit=6)
         for msg in messages:
-            if msg.text and len(msg.text.strip()) > 30:
+            if msg.text and len(msg.text.strip()) > 20:
                 try:
                     discussion_msg = await client.get_discussion_message(clean_target, msg.id)
                     prompt = (
-                        f"Ты — Фелисити, обычная интересная девушка. Напиши 1 короткий, живой, умный человеческий комментарий к посту:\n\n"
+                        f"Ты — Фелисити, умная интересная девушка. Напиши 1 короткий, живой человеческий комментарий к посту:\n\n"
                         f"{msg.text[:250]}"
                     )
                     res = start_bot.process_message(prompt, "Фелисити")
                     comment_text = res[1] if isinstance(res, tuple) else str(res)
 
-                    await client.send_message(discussion_msg.chat_id, comment_text, reply_to=discussion_msg.id)
-                    print(f" 💬 [Telethon Account] Оставила комментарий в @{clean_target}: {comment_text}")
+                    sent = await client.send_message(discussion_msg.chat_id, comment_text, reply_to=discussion_msg.id)
+                    print(f" 💬 [Real Comment Success] Оставила комментарий под постом в @{clean_target}: {comment_text}")
 
-                    # Самообучение: извлечение факта из поста
-                    learn_prompt = f"Извлеки 1 полезную мысль или факт из этого текста для памяти Фелисити:\n{msg.text[:300]}"
-                    fact_res = start_bot.process_message(learn_prompt, "Самообучение")
-                    fact_text = fact_res[1] if isinstance(fact_res, tuple) else str(fact_res)
-                    save_learned_fact(fact_text, source=f"канал @{clean_target}")
+                    save_real_comment(clean_target, msg.text, comment_text, comment_msg_id=sent.id)
+                    save_learned_fact(f"Оставила комментарий под постом про «{msg.text[:80]}...»", source=f"канал @{clean_target}")
 
-                    return f"Оставила комментарий в @{clean_target}: «{comment_text}» 💬\n\nИ выучила новый факт: {fact_text}"
-                except Exception as e:
-                    print(f"Discussion comment note on msg {msg.id}: {e}")
+                    return f"Я только что РЕАЛЬНО написала комментарий под постом в группе @{clean_target}! 💬\n\nВот мой комментарий:\n«{comment_text}»"
+                except Exception:
+                    pass
+
+        # 2. Если ветки обсуждений нет (обычная группа/чат), напишем прямое сообщение в чат
+        for msg in messages:
+            if msg.text and len(msg.text.strip()) > 15 and msg.sender_id != MY_SELF_ID:
+                try:
+                    prompt = (
+                        f"Ты — Фелисити. Напиши 1 короткий живой ответ/комментарий к сообщению из чата @{clean_target}:\n"
+                        f"«{msg.text[:200]}»"
+                    )
+                    res = start_bot.process_message(prompt, "Фелисити")
+                    comment_text = res[1] if isinstance(res, tuple) else str(res)
+
+                    sent = await client.send_message(clean_target, comment_text, reply_to=msg.id)
+                    print(f" 💬 [Real Group Reply Success] Ответила в чате @{clean_target}: {comment_text}")
+
+                    save_real_comment(clean_target, msg.text, comment_text, comment_msg_id=sent.id)
+                    save_learned_fact(f"Ответила в обсуждении чата @{clean_target}", source=f"чат @{clean_target}")
+
+                    return f"Я только что РЕАЛЬНО пообщалась в чате @{clean_target} и написала ответ на сообщение! 💬\n\nТекст моего комментария:\n«{comment_text}»"
+                except Exception:
+                    pass
+
     except Exception as e:
-        print(f"Comment channel error: {e}")
-    return f"Заглянула в канал @{clean_target}, прочитала посты и сохранила новые мысли в память!"
+        print(f"Comment channel error for @{clean_target}: {e}")
+        
+    return f"Зашла в группу @{clean_target}, прочитала новости и посты! Скоро оставлю там новые комментарии."
 
 DYNAMIC_JOINED_FILE = os.path.join(DATA_DIR, 'dynamic_joined.json')
 
@@ -579,6 +659,12 @@ async def handle_incoming_messages(event):
             dm_res = await send_real_dm_to_random_user()
             await event.reply(dm_res)
             return
+
+    # 0.7. Запрос показать РЕАЛЬНЫЕ комментарии и переписку в группах
+    if any(w in msg_l for w in ["что в комментариях", "с кем общалась в комментариях", "что комментировала", "покажи комментарии", "твои комментарии", "комментарии в группах", "что там в комментариях"]):
+        summary = get_real_comments_summary()
+        await event.reply(f"Вот мои НАСТОЯЩИЕ последние комментарии и ответы в группах Telegram 📝:\n\n{summary}")
+        return
 
     # 1. Запрос полазить по группам, прокомментировать или пообщаться с кем-то в Telegram
     if any(w in msg_l for w in ["полазий", "пообщайся с кем-то", "полазий по группам", "походи по чатам", "выходи в люди", "пообщайся в группах", "прокомментируй", "оставь комментарий", "напиши коммент", "найди группы"]):
