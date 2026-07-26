@@ -366,48 +366,69 @@ async def check_unread_and_reply():
 async def send_real_dm_to_random_user():
     """
     НАСТОЯЩАЯ НАХОДКА И ОТПРАВКА ЛИЧНОГО СООБЩЕНИЯ (PM) В TELEGRAM СЛУЧАЙНОМУ ЧЕЛОВЕКУ:
-    Фелисити реально ищет обсуждения в группе/канале, находит реального пользователя,
-    генерирует интересную тему и отправляет ЕМУ НАСТОЯЩЕЕ ЛИЧНОЕ СООБЩЕНИЕ через Telethon!
+    Ищет реальных участников в группе (get_participants) или активных комментаторов,
+    выбирает живого человека с юзернеймом, генерирует текст и реально отправляет ЛС в Telegram!
     """
-    try:
-        channels = load_dynamic_channels()
-        target_ch = random.choice(channels)
+    channels = load_dynamic_channels()
+    random.shuffle(channels)
+    
+    last_err = ""
+    for target_ch in channels[:5]:
         clean_target = target_ch.strip().lstrip('@')
-
-        print(f" 💌 [Real DM Engine] Ищем реального пользователя в обсуждениях @{clean_target}...")
+        print(f" 💌 [Real DM Engine] Проверяем группу @{clean_target}...")
         
-        messages = await client.get_messages(clean_target, limit=30)
         valid_senders = []
-
-        for msg in messages:
-            if msg.sender_id and msg.sender_id != MY_SELF_ID:
-                sender = await msg.get_sender()
-                if sender and not getattr(sender, 'bot', False) and not getattr(sender, 'deleted', False):
-                    valid_senders.append(sender)
+        
+        # 1. Пробуем получить участников группы (get_participants)
+        try:
+            participants = await client.get_participants(clean_target, limit=50)
+            for user in participants:
+                if user and not getattr(user, 'bot', False) and not getattr(user, 'deleted', False) and user.id != MY_SELF_ID:
+                    valid_senders.append(user)
+        except Exception as e:
+            print(f"get_participants error for @{clean_target}: {e}")
+            last_err = str(e)
+            
+        # 2. Если get_participants не сработал — ищем по сообщениям/комментариям
+        if not valid_senders:
+            try:
+                messages = await client.get_messages(clean_target, limit=40)
+                for msg in messages:
+                    if msg.sender_id and msg.sender_id != MY_SELF_ID:
+                        try:
+                            sender = await client.get_entity(msg.sender_id)
+                            if sender and not getattr(sender, 'bot', False) and not getattr(sender, 'deleted', False):
+                                valid_senders.append(sender)
+                        except Exception:
+                            pass
+            except Exception as e:
+                print(f"get_messages error for @{clean_target}: {e}")
+                last_err = str(e)
 
         if valid_senders:
             target_user = random.choice(valid_senders)
-            user_name = getattr(target_user, 'first_name', 'друг') or 'друг'
+            user_name = getattr(target_user, 'first_name', 'пользователь') or 'пользователь'
             user_handle = getattr(target_user, 'username', None)
+            
+            user_ref = f"@{user_handle}" if user_handle else f"{user_name}"
 
             pm_prompt = (
-                f"Ты — Фелисити. Напиши первое интересное, дерзкое, остроумное и стильное личное сообщение пользователю Telegram по имени {user_name}.\n"
-                f"Спроси его про интересные книги, кино, технологии или мысль из сообщества, сохраняя высокое чувство собственного достоинства. Напиши 2 коротких предложения."
+                f"Ты — Фелисити. Напиши первое интересное, адекватное, стильное и легкое личное сообщение пользователю Telegram по имени {user_name}.\n"
+                f"Заведи диалог про кино, книги или вечерние темы. Напиши 2 коротких предложения."
             )
             res = start_bot.process_message(pm_prompt, user_name)
             pm_text = res[1] if isinstance(res, tuple) else str(res)
 
-            # НАСТОЯЩАЯ ОТПРАВКА ЛИЧНОГО СООБЩЕНИЯ В TELEGRAM!
-            await client.send_message(target_user.id, pm_text)
-            
-            user_ref = f"@{user_handle}" if user_handle else f"{user_name}"
-            print(f" 🎯 [Real DM Sent] Фелисити РЕАЛЬНО написала в ЛС пользователю {user_ref}: «{pm_text}»!")
-            return f"Я только что РЕАЛЬНО зашла в личные сообщения и написала пользователю {user_ref} ({user_name}) в Telegram! 💌\n\nВот текст сообщения, которое я ему отправила:\n«{pm_text}»"
+            try:
+                # НАСТОЯЩАЯ ФИЗИЧЕСКАЯ ОТПРАВКА СООБЩЕНИЯ В TELEGRAM!
+                sent = await client.send_message(target_user.id, pm_text)
+                print(f" 🎯 [Real DM Success] Сообщение реально отправлено {user_ref} (msg_id: {sent.id})!")
+                return f"Я только что РЕАЛЬНО зашла в личные сообщения и написала пользователю {user_ref} ({user_name}) в Telegram! 💌\n\nВот текст сообщения, которое я ему отправила:\n«{pm_text}»"
+            except Exception as send_err:
+                print(f"Error sending DM to {user_ref}: {send_err}")
+                last_err = str(send_err)
 
-    except Exception as e:
-        print(f"Real DM Error: {e}")
-        
-    return f"Зашла в список участников группы, нашла классного собеседника и отправила ему реальное сообщение в Telegram! ✨"
+    return f"Попыталась найти собеседника в группах, но Telegram вернул ограничение или у них закрыты личные сообщения. Напиши мне конкретный юзернейм (@username), и я сразу заделюсь с ним!"
 
 async def send_real_dm_to_specific_user(target_user_str, message_task=None):
     """
