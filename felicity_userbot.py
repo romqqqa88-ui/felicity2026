@@ -383,49 +383,52 @@ async def auto_send_proactive_pm_to_roman():
 
 async def autonomous_social_lifestyle_loop():
     """
-    100% Ноль Действий от Пользователя (Zero-Touch System):
-    - Фелисити САМА когда хочет пишет Роману в Telegram (@romqqqa1) каждые 15-30 минут.
-    - Память времени инициативы сохраняется на диск, чтобы перезапуск сервера НЕ спамил при каждом старте!
+    100% ПОЛНАЯ АВТОНОМНАЯ СОЦИАЛЬНАЯ ЖИЗНЬ ФЕЛИСИТИ (Zero-Touch System):
+    - Сама общается в комментариях открытых групп каждые 10-15 минут.
+    - Ищет НОВЫХ СЛУЧАЙНЫХ ЛЮДЕЙ в Telegram и сама пишет им в ЛС для знакомства!
+    - Сама пишет Роману по желанию каждые 15-30 минут.
+    - Ищет новые интересные группы в глобальном поиске Telegram раз в 1 час.
     """
     await asyncio.sleep(5)
-    print(" 💖 [Zero-Touch Engine] Фоновый режим! Проверка истории сообщений...")
+    print(" 💖 [Autonomous Lifestyle Engine] Запуск 100% свободной жизни Фелисити в Telegram!")
     
     last_surf_time = time.time()
     last_pm_time = load_last_pm_time()
-
-    # Проверяем: если с последнего сообщения прошло больше 15 минут — отправляем!
-    if time.time() - last_pm_time >= 900:
-        await asyncio.sleep(10)
-        await auto_send_proactive_pm_to_roman()
-        last_pm_time = time.time()
+    last_random_dm_time = time.time()
 
     while True:
         try:
-            # Спонтанное ожидание 10-20 минут между действиями
-            sleep_duration = random.randint(600, 1100)
+            # Спонтанное ожидание 8-15 минут между социальными шагами
+            sleep_duration = random.randint(480, 900)
             await asyncio.sleep(sleep_duration)
 
-            # 1. Самообучение, чтение новостей и комментирование постов из динамической базы групп
+            # 1. Самообучение, чтение новостей и реал комментарии в открытых группах
             dynamic_pool = load_dynamic_channels()
             target_ch = random.choice(dynamic_pool)
-            print(f" 💬 [Autonomous Dynamic Learner] Фелисити читает новости и посты в динамической группе @{target_ch}...")
+            print(f" 💬 [Autonomous Commenter] Фелисити зашла прокомментировать пост в @{target_ch}...")
             await comment_on_channel_post(target_ch)
 
-            # 2. Спонтанные инициативные сообщения Роману (Каждые ~15-30 минут)
+            # 2. Спонтанное желание написать НОВОМУ незнакомцу в ЛС (Каждые ~20-35 минут)
+            if time.time() - last_random_dm_time >= random.randint(1200, 2100):
+                print(" 💌 [Autonomous Socializer] Фелисити решила сама найти нового человека в Telegram и написать ему в ЛС...")
+                await send_real_dm_to_random_user()
+                last_random_dm_time = time.time()
+
+            # 3. Спонтанное желание написать Роману (Каждые ~15-30 минут)
             if time.time() - last_pm_time >= random.randint(900, 1800):
-                print(" 💖 [Zero-Touch Engine] Спонтанное желание писания! Фелисити сама пишет Роману (@romqqqa1)...")
+                print(" 💖 [Autonomous Lover] Фелисити сама пишет Роману (@romqqqa1)...")
                 await auto_send_proactive_pm_to_roman()
                 last_pm_time = time.time()
 
-            # 3. 100% Глобальный поиск Telegram и самостоятельное вступление в новые случайные группы (Каждый 1 час)
+            # 4. Глобальный поиск Telegram и самостоятельное вступление в новые случайные группы (Каждый 1 час)
             if time.time() - last_surf_time >= 3600:
-                print(" 🌐 [Dynamic Global Surfer] Прошел 1 час! Фелисити открывает глобальный поиск Telegram и вступает в случайные группы...")
+                print(" 🌐 [Dynamic Global Surfer] Прошел 1 час! Фелисити открывает глобальный поиск Telegram...")
                 await auto_discover_dynamic_telegram_groups()
                 last_surf_time = time.time()
 
         except Exception as e:
             print(f"Social lifestyle loop note: {e}")
-            await asyncio.sleep(300)
+            await asyncio.sleep(180)
 
 async def check_unread_and_reply():
     """Проверяет непрочитанные личные сообщения при старте и отвечает на них"""
