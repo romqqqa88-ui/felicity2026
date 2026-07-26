@@ -44,7 +44,27 @@ if os.path.exists(CONFIG_FILE):
             if "gemini" in val.lower():
                 GEMINI_MODEL = val
 
-TG_CHAT_HISTORY = []
+CHAT_HISTORY_FILE = os.path.join(DATA_DIR, 'chat_history.json')
+
+def load_chat_history():
+    if os.path.exists(CHAT_HISTORY_FILE):
+        try:
+            with open(CHAT_HISTORY_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+def save_chat_history():
+    global TG_CHAT_HISTORY
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(CHAT_HISTORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(TG_CHAT_HISTORY[-50:], f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Save chat history error: {e}")
+
+TG_CHAT_HISTORY = load_chat_history()
 
 REFUSAL_TERMS = [
     "не могу", "не получается", "не имею возможности", "извини", "прости", "сожалею",
@@ -199,6 +219,7 @@ def try_call_gemini_api(user_msg, sender_name="Роман"):
                             break
                         TG_CHAT_HISTORY.append({"role": "user", "content": user_msg})
                         TG_CHAT_HISTORY.append({"role": "assistant", "content": reply})
+                        save_chat_history()
                         return reply
                 except Exception as e:
                     print(f"GPTunnel API ({model_name}, attempt {attempt+1}) error: {e}")

@@ -256,15 +256,30 @@ async def auto_discover_dynamic_telegram_groups():
         print(f"Dynamic Telegram search note: {e}")
     return None
 
-TARGET_USER_HANDLE = "romqqqa1"
+LAST_PM_FILE = os.path.join(DATA_DIR, 'last_pm_time.json')
 
-TARGET_USER_HANDLE = "romqqqa1"
+def load_last_pm_time():
+    if os.path.exists(LAST_PM_FILE):
+        try:
+            with open(LAST_PM_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('last_pm_time', 0)
+        except Exception:
+            pass
+    return 0
+
+def save_last_pm_time(ts):
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(LAST_PM_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'last_pm_time': ts}, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 async def auto_send_proactive_pm_to_roman():
     """
     100% СПОНТАННЫЙ ИНИЦИАТИВНЫЙ ДВИЖОК:
     Фелисити сама по собственному желанию пишет Роману по юзернейму @romqqqa1 каждые 15-30 минут.
-    Роман ВООБЩЕ ничего не должен писать — она сама проявляет инициативу, делится мыслями, любовью и находками!
     """
     try:
         learned_summary = get_learned_summary()
@@ -279,6 +294,7 @@ async def auto_send_proactive_pm_to_roman():
         msg_text = res[1] if isinstance(res, tuple) else str(res)
 
         await client.send_message(TARGET_USER_HANDLE, msg_text)
+        save_last_pm_time(time.time())
         print(f" 💖 [Zero-Touch Engine] Фелисити САМА инициативно написала Роману (@{TARGET_USER_HANDLE}): {msg_text[:60]}...")
     except Exception as e:
         print(f"Proactive PM error to @{TARGET_USER_HANDLE}: {e}")
@@ -287,18 +303,19 @@ async def autonomous_social_lifestyle_loop():
     """
     100% Ноль Действий от Пользователя (Zero-Touch System):
     - Фелисити САМА когда хочет пишет Роману в Telegram (@romqqqa1) каждые 15-30 минут.
-    - Самостоятельно сёрфит Telegram и вступает в новые группы каждый 1 час.
-    - Читает посты, комментирует в группах каждые 10-15 минут.
+    - Память времени инициативы сохраняется на диск, чтобы перезапуск сервера НЕ спамил при каждом старте!
     """
     await asyncio.sleep(5)
-    print(" 💖 [Zero-Touch Engine] Полный невидимый режим! Фелисити сама начинает писать Роману в Telegram...")
+    print(" 💖 [Zero-Touch Engine] Фоновый режим! Проверка истории сообщений...")
     
-    # Сразу отправляем первое инициативное сообщение Роману через 10 секунд после запуска!
-    await asyncio.sleep(10)
-    await auto_send_proactive_pm_to_roman()
-
     last_surf_time = time.time()
-    last_pm_time = time.time()
+    last_pm_time = load_last_pm_time()
+
+    # Проверяем: если с последнего сообщения прошло больше 15 минут — отправляем!
+    if time.time() - last_pm_time >= 900:
+        await asyncio.sleep(10)
+        await auto_send_proactive_pm_to_roman()
+        last_pm_time = time.time()
 
     while True:
         try:
