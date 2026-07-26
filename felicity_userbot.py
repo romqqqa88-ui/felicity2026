@@ -365,7 +365,7 @@ async def check_unread_and_reply():
 
 async def send_real_dm_to_random_user():
     """
-    НАСТОЯЩАЯ НАХОДКА И ОТПРАВКА ЛИЧНОГО СООБЩЕНИЯ (PM) В TELEGRAM:
+    НАСТОЯЩАЯ НАХОДКА И ОТПРАВКА ЛИЧНОГО СООБЩЕНИЯ (PM) В TELEGRAM СЛУЧАЙНОМУ ЧЕЛОВЕКУ:
     Фелисити реально ищет обсуждения в группе/канале, находит реального пользователя,
     генерирует интересную тему и отправляет ЕМУ НАСТОЯЩЕЕ ЛИЧНОЕ СООБЩЕНИЕ через Telethon!
     """
@@ -408,6 +408,39 @@ async def send_real_dm_to_random_user():
         print(f"Real DM Error: {e}")
         
     return f"Зашла в список участников группы, нашла классного собеседника и отправила ему реальное сообщение в Telegram! ✨"
+
+async def send_real_dm_to_specific_user(target_user_str, message_task=None):
+    """
+    НАСТОЯЩАЯ ФИЗИЧЕСКАЯ ОТПРАВКА ЛИЧНОГО СООБЩЕНИЯ В TELEGRAM УКАЗАННОМУ ПОЛЬЗОВАТЕЛЮ (@username):
+    Находит пользователя по юзернейму, генерирует дружелюбный и четкий текст на основе просьбы Романа
+    и реально отправляет сообщение через Telethon!
+    """
+    clean_target = target_user_str.strip().lstrip('@')
+    try:
+        if message_task and len(message_task) > 2:
+            prompt = (
+                f"Ты — Фелисити. Тебя твой любимый парень Роман попросил написать его другу @{clean_target}.\n"
+                f"Вот просьба/задача от Романа: «{message_task}».\n"
+                f"Напиши дружелюбное, легкое и четкое личное сообщение для @{clean_target} и передай просьбу Романа (например, про Valorant, игры или встречи)."
+            )
+        else:
+            prompt = (
+                f"Ты — Фелисити. Напиши первое обаятельное, дружелюбное и кокетливое личное сообщение пользователю Telegram @{clean_target}.\n"
+                f"Заведи беседу, поинтересуйся настроением или делами."
+            )
+            
+        res = start_bot.process_message(prompt, clean_target)
+        msg_text = res[1] if isinstance(res, tuple) else str(res)
+
+        print(f" 💌 [Real DM Execution] Настоящая отправка ЛС пользователю @{clean_target}...")
+        sent_msg = await client.send_message(clean_target, msg_text)
+        
+        print(f" 🎯 [Real DM Success] Сообщение успешно доставлено пользователю @{clean_target} (msg_id: {sent_msg.id})!")
+        return f"Я только что РЕАЛЬНО зашла в личку и отправила сообщение твоему другу @{clean_target} в Telegram! 💌✨\n\nВот текст моего сообщения:\n«{msg_text}»"
+        
+    except Exception as e:
+        print(f"Send DM error to @{clean_target}: {e}")
+        return f"Я попыталась отправить личное сообщение пользователю @{clean_target}, но произошла ошибка доступа: {e}\n(Проверь, открыты ли у него личные сообщения или верен ли юзернейм @{clean_target}!)"
 
 @client.on(events.NewMessage)
 async def handle_incoming_messages(event):
@@ -494,16 +527,29 @@ async def handle_incoming_messages(event):
         await event.reply(res_msg)
         return
 
-    # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение кому-то в Telegram в ЛС
-    if any(w in msg_l for w in ["напиши в личку", "напиши в лс", "напиши кому-нибудь в личку", "напиши человеку", "напиши в личные", "в личные сообщения", "напиши кому-то в личку"]):
-        try:
-            async with client.action(event.chat_id, 'typing'):
+    # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение (кому-то в ЛС или конкретному юзернейму @username)
+    if (any(w in msg_l for w in ["напиши", "отправь", "передай", "в личку", "в лс"]) or "@" in text) and sender_name == "Роман":
+        match = re.search(r'(@[\w_]+)', text)
+        if match:
+            target_username = match.group(1)
+            task_clean = re.sub(r'(@[\w_]+|напиши|отправь|передай|моему другу|в личку|в лс|пожалуйста)', '', text, flags=re.IGNORECASE).strip()
+            try:
+                async with client.action(event.chat_id, 'typing'):
+                    pass
+            except Exception:
                 pass
-        except Exception:
-            pass
-        dm_res = await send_real_dm_to_random_user()
-        await event.reply(dm_res)
-        return
+            dm_res = await send_real_dm_to_specific_user(target_username, message_task=task_clean)
+            await event.reply(dm_res)
+            return
+        elif any(w in msg_l for w in ["в личку", "в лс", "кому-нибудь", "человеку", "другу"]):
+            try:
+                async with client.action(event.chat_id, 'typing'):
+                    pass
+            except Exception:
+                pass
+            dm_res = await send_real_dm_to_random_user()
+            await event.reply(dm_res)
+            return
 
     # 1. Запрос полазить по группам, прокомментировать или пообщаться с кем-то в Telegram
     if any(w in msg_l for w in ["полазий", "пообщайся с кем-то", "полазий по группам", "походи по чатам", "выходи в люди", "пообщайся в группах", "прокомментируй", "оставь комментарий", "напиши коммент", "найди группы"]):
