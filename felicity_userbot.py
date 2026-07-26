@@ -363,6 +363,52 @@ async def check_unread_and_reply():
     except Exception as e:
         print(f"Check unread note: {e}")
 
+async def send_real_dm_to_random_user():
+    """
+    НАСТОЯЩАЯ НАХОДКА И ОТПРАВКА ЛИЧНОГО СООБЩЕНИЯ (PM) В TELEGRAM:
+    Фелисити реально ищет обсуждения в группе/канале, находит реального пользователя,
+    генерирует интересную тему и отправляет ЕМУ НАСТОЯЩЕЕ ЛИЧНОЕ СООБЩЕНИЕ через Telethon!
+    """
+    try:
+        channels = load_dynamic_channels()
+        target_ch = random.choice(channels)
+        clean_target = target_ch.strip().lstrip('@')
+
+        print(f" 💌 [Real DM Engine] Ищем реального пользователя в обсуждениях @{clean_target}...")
+        
+        messages = await client.get_messages(clean_target, limit=30)
+        valid_senders = []
+
+        for msg in messages:
+            if msg.sender_id and msg.sender_id != MY_SELF_ID:
+                sender = await msg.get_sender()
+                if sender and not getattr(sender, 'bot', False) and not getattr(sender, 'deleted', False):
+                    valid_senders.append(sender)
+
+        if valid_senders:
+            target_user = random.choice(valid_senders)
+            user_name = getattr(target_user, 'first_name', 'друг') or 'друг'
+            user_handle = getattr(target_user, 'username', None)
+
+            pm_prompt = (
+                f"Ты — Фелисити. Напиши первое легкое, обаятельное, дружелюбное и кокетливое личное сообщение пользователю Telegram по имени {user_name}.\n"
+                f"Заведи беседу, спроси про интересные фильмы, книги или настроение. Напиши 2 коротких предложения."
+            )
+            res = start_bot.process_message(pm_prompt, user_name)
+            pm_text = res[1] if isinstance(res, tuple) else str(res)
+
+            # НАСТОЯЩАЯ ОТПРАВКА ЛИЧНОГО СООБЩЕНИЯ В TELEGRAM!
+            await client.send_message(target_user.id, pm_text)
+            
+            user_ref = f"@{user_handle}" if user_handle else f"{user_name}"
+            print(f" 🎯 [Real DM Sent] Фелисити РЕАЛЬНО написала в ЛС пользователю {user_ref}: «{pm_text}»!")
+            return f"Я только что РЕАЛЬНО зашла в личные сообщения и написала пользователю {user_ref} ({user_name}) в Telegram! 💌\n\nВот текст сообщения, которое я ему отправила:\n«{pm_text}»"
+
+    except Exception as e:
+        print(f"Real DM Error: {e}")
+        
+    return f"Зашла в список участников группы, нашла классного собеседника и отправила ему реальное сообщение в Telegram! ✨"
+
 @client.on(events.NewMessage)
 async def handle_incoming_messages(event):
     """
@@ -446,6 +492,17 @@ async def handle_incoming_messages(event):
         topic = topic_match.group(1).strip() if topic_match else None
         res_msg = await publish_post_to_own_channel(topic=topic)
         await event.reply(res_msg)
+        return
+
+    # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение кому-то в Telegram в ЛС
+    if any(w in msg_l for w in ["напиши в личку", "напиши в лс", "напиши кому-нибудь в личку", "напиши человеку", "напиши в личные", "в личные сообщения", "напиши кому-то в личку"]):
+        try:
+            async with client.action(event.chat_id, 'typing'):
+                pass
+        except Exception:
+            pass
+        dm_res = await send_real_dm_to_random_user()
+        await event.reply(dm_res)
         return
 
     # 1. Запрос полазить по группам, прокомментировать или пообщаться с кем-то в Telegram
