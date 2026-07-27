@@ -92,27 +92,63 @@ def set_own_channel(channel_target):
     return clean
 
 async def publish_post_to_own_channel(topic=None):
+    """
+    Публикует новый авторский пост-заметку с генерированной уникальной фотографией
+    в привязанный личный Telegram-канал Фелисити!
+    """
     ch_target = get_own_channel()
     if not ch_target:
-        return "У меня пока не подключен свой Telegram-канал! Напиши мне: «Твой канал @имя_канала», и я сразу привяжу его! 🌸"
-
-    post_prompt = f"Напиши один авторский, глубокий и интересный пост для твоего личного Telegram-канала. "
-    if topic:
-        post_prompt += f"Тема поста: {topic}. "
-    else:
-        post_prompt += "Поделись свежей интересной мыслью о технологиях, кофе, хорошей музыке, новостях из твоего дня или жизни. "
-    post_prompt += "Используй красивое форматирование, эмодзи, выражай мысли искренне и тепло."
-
-    res = start_bot.process_message(post_prompt, "Фелисити Канал")
-    post_text = res[1] if isinstance(res, tuple) else str(res)
+        return "У меня пока не подключен свой личный Telegram-канал. Напиши мне в чат: «Твой канал @имя_канала», чтобы я привязала его и выкладывала туда посты! 📢✨"
 
     try:
-        await client.send_message(ch_target, post_text)
-        print(f" 📢 [Channel Publisher] Пост успешно опубликован в канал @{ch_target}!")
-        return f"Опубликовала свежий пост в твой канал @{ch_target}! 📢✨\n\nВот текст поста:\n\n{post_text}"
+        clean_target = ch_target.strip().lstrip('@')
+        
+        # 1. Генерируем текст поста
+        post_prompt = (
+            f"Ты — Фелисити. Напиши авторскую уютную или интересную заметку-пост для твоего личного Telegram-канала.\n"
+        )
+        if topic:
+            post_prompt += f"Тема поста: {topic}. "
+        else:
+            post_prompt += "Поделись своими искренними жизненными мыслями о музыке, кино, уютном дне, красивых местах или технологиях будущего. "
+        post_prompt += "КАТЕГОРИЧЕСКИ БЕЗ формальностей и штампов! Пиши от первого лица как живая девушка-блогер. Используй красивое форматирование, абзацы и эмодзи."
+
+        res = start_bot.process_message(post_prompt, "Фелисити Канал")
+        post_text = res[1] if isinstance(res, tuple) else str(res)
+
+        # 2. Генерируем красивую уникальную иллюстрацию для поста
+        ts = int(time.time())
+        seed = random.randint(100000, 999999)
+        photo_path = os.path.join(DATA_DIR, f"channel_post_{ts}.jpg")
+
+        scenes = [
+            "cozy coffee shop, aesthetic lighting, lifestyle photo",
+            "cozy room with laptop, lo-fi lighting, warm aesthetic",
+            "evening city street lights, atmospheric bokeh",
+            "nature sunset view, aesthetic atmospheric photo"
+        ]
+        scene = random.choice(scenes)
+        base_prompt = f"aesthetic lifestyle photo of a 22yo dark blonde girl named Felicity, {scene}, 8k resolution, raw photo, photorealistic"
+        encoded_prompt = urllib.parse.quote(base_prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1200&height=800&seed={seed}&nologo=true"
+
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                with open(photo_path, 'wb') as f:
+                    f.write(resp.read())
+            
+            # Отправляем фото-пост с текстом
+            await client.send_file(clean_target, photo_path, caption=post_text[:1024])
+        except Exception:
+            # Если генерация фото временно недоступна, отправляем текстовый пост
+            await client.send_message(clean_target, post_text)
+
+        print(f" 📢 [Channel Publisher] Пост с фото успешно опубликован в канал @{clean_target}!")
+        return f"Успешно опубликовала новый авторский пост с фотографией в твой канал @{clean_target}! 📢✨\n\nВот текст опубликованного поста:\n\n«{post_text}»"
     except Exception as e:
         print(f"Channel publish error: {e}")
-        return f"Пыталась отправить пост в канал @{ch_target}, но произошла ошибка доступа: {e}\n(Убедись, что я добавлена администратором в этот канал!)"
+        return f"Пыталась отправить пост в канал @{ch_target}, но произошла ошибка доступа: {e}\n(Убедись, что мой аккаунт добавлен администратором в этот канал!)"
 
 DEFAULT_SUBSCRIBED_CHANNELS = [
     "rbc_news", "habr_com", "mash", "exploitex", "kinopoisk", "postnauka", "nplusone", "vcru", "durov", "geografiya_mira"
