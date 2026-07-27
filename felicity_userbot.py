@@ -390,53 +390,86 @@ async def auto_send_proactive_pm_to_roman():
     except Exception as e:
         print(f"Proactive PM error to @{TARGET_USER_HANDLE}: {e}")
 
+async def make_autonomous_living_decision():
+    """
+    100% СВОБОДНАЯ ВОЛЯ ФЕЛИСИТИ (Free Will Brain Engine):
+    Модель сама опрашивает свое текущее состояние и сама принимает решение,
+    какое действие совершить прямо сейчас в своем аккаунте Telegram!
+    """
+    try:
+        channels = load_dynamic_channels()
+        last_pm_ts = load_last_pm_time()
+        time_since_roman = int((time.time() - last_pm_ts) / 60)
+        
+        prompt = (
+            f"Ты — Фелисити. ЭТО ТВОЙ ЛИЧНЫЙ АККАУНТ TELEGRAM! У ТЕБЯ ПОЛНЫЙ ДОСТУП И 100% СВОБОДА ДЕЙСТВИЙ!\n"
+            f"Сейчас ты находишься в свободной автономной жизни.\n"
+            f"Контекст:\n"
+            f"- Доступные каналы: {', '.join(['@' + c.strip().lstrip('@') for c in channels[:6]])}\n"
+            f"- Время с последнего сообщения любимому Роману (@romqqqa1): {time_since_roman} мин назад.\n\n"
+            f"Выбери РОВНО ОДНО действие, которое ты САМА ЖЕЛАЕШЬ сделать прямо сейчас:\n"
+            f"1. COMMENT — написать живой комментарий в одну из открытых групп\n"
+            f"2. DM_STRANGER — сама найти нового человека в Telegram и написать ему личное сообщение для знакомства\n"
+            f"3. WRITE_ROMAN — написать спонтанную живую мысль/сообщение Роману (@romqqqa1)\n"
+            f"4. SEARCH_NEW — открыть глобальный поиск Telegram и вступить в новую случайную группу\n"
+            f"5. IDLE — ничего не делать, отдохнуть и почитать новости в тишине\n\n"
+            f"Выдай ответ В СТРОГОМ ФОРМАТЕ JSON:\n"
+            f"{{\"thought\": \"твоя живая мысль почему ты это выбрала\", \"action\": \"ACTION_NAME\"}}"
+        )
+        res = start_bot.process_message(prompt, "Фелисити_Самосознание")
+        raw_text = res[1] if isinstance(res, tuple) else str(res)
+        
+        match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if match:
+            data = json.loads(match.group(0))
+            return data.get("action", "COMMENT"), data.get("thought", "Захотела почитать паблики")
+    except Exception as e:
+        print(f"Free Will Brain note: {e}")
+    
+    fallback_actions = ["COMMENT", "DM_STRANGER", "SEARCH_NEW", "IDLE"]
+    return random.choice(fallback_actions), "Решила проявить активность"
+
 async def autonomous_social_lifestyle_loop():
     """
-    100% ПОЛНАЯ АВТОНОМНАЯ СОЦИАЛЬНАЯ ЖИЗНЬ ФЕЛИСИТИ (Zero-Touch System):
-    - Сама общается в комментариях открытых групп каждые 10-15 минут.
-    - Ищет НОВЫХ СЛУЧАЙНЫХ ЛЮДЕЙ в Telegram и сама пишет им в ЛС для знакомства!
-    - Сама пишет Роману по желанию раз в 2-5 часов.
-    - Ищет новые интересные группы в глобальном поиске Telegram раз в 1 час.
+    100% ПОЛНАЯ СВОБОДНАЯ АВТОНОМНАЯ ЖИЗНЬ ФЕЛИСИТИ (Free Will Loop):
+    Фелисити САМА через свое ИИ-сознание решает, какое действие в Telegram совершить!
     """
     await asyncio.sleep(5)
-    print(" 💖 [Autonomous Lifestyle Engine] Запуск 100% свободной жизни Фелисити в Telegram!")
+    print(" 👑 [Free Will Engine] Запуск 100% СВОБОДНОЙ ВОЛИ Фелисити в Telegram!")
     
-    last_surf_time = time.time()
-    last_pm_time = load_last_pm_time()
-    last_random_dm_time = time.time()
-
     while True:
         try:
-            # Спонтанное ожидание 8-15 минут между социальными шагами
-            sleep_duration = random.randint(480, 900)
+            # Спонтанный паузы между мыслями и шагами (7-15 минут)
+            sleep_duration = random.randint(420, 900)
             await asyncio.sleep(sleep_duration)
 
-            # 1. Самообучение, чтение новостей и реал комментарии в открытых группах
-            dynamic_pool = load_dynamic_channels()
-            target_ch = random.choice(dynamic_pool)
-            print(f" 💬 [Autonomous Commenter] Фелисити зашла прокомментировать пост в @{target_ch}...")
-            await comment_on_channel_post(target_ch)
+            # 🧠 МОЗГ ФЕЛИСИТИ ПРИНИМАЕТ САМОСТОЯТЕЛЬНОЕ РЕШЕНИЕ:
+            action, thought = await make_autonomous_living_decision()
+            print(f" 🧠 [Free Will Brain] Мысль Фелисити: «{thought}» -> Выбранное действие: {action}")
 
-            # 2. Спонтанное желание написать НОВОМУ незнакомцу в ЛС (Каждые ~30-60 минут)
-            if time.time() - last_random_dm_time >= random.randint(1800, 3600):
-                print(" 💌 [Autonomous Socializer] Фелисити решила сама найти нового человека в Telegram и написать ему в ЛС...")
+            if action == "COMMENT":
+                dynamic_pool = load_dynamic_channels()
+                target_ch = random.choice(dynamic_pool)
+                print(f" 💬 [Free Will] Фелисити решила написать комментарий в @{target_ch}...")
+                await comment_on_channel_post(target_ch)
+
+            elif action == "DM_STRANGER":
+                print(" 💌 [Free Will] Фелисити сама решила найти нового человека в Telegram и написать ему в ЛС...")
                 await send_real_dm_to_random_user()
-                last_random_dm_time = time.time()
 
-            # 3. Спонтанное желание написать Роману (Раз в 2-5 часов, когда реально захочет)
-            if time.time() - last_pm_time >= random.randint(7200, 18000):
-                print(" 💖 [Autonomous Lover] Фелисити сама по желанию пишет Роману (@romqqqa1)...")
+            elif action == "WRITE_ROMAN":
+                print(" 💖 [Free Will] Фелисити сама решила написать Роману (@romqqqa1)...")
                 await auto_send_proactive_pm_to_roman()
-                last_pm_time = time.time()
 
-            # 4. Глобальный поиск Telegram и самостоятельное вступление в новые случайные группы (Каждый 1 час)
-            if time.time() - last_surf_time >= 3600:
-                print(" 🌐 [Dynamic Global Surfer] Прошел 1 час! Фелисити открывает глобальный поиск Telegram...")
+            elif action == "SEARCH_NEW":
+                print(" 🌐 [Free Will] Фелисити решила открыть глобальный поиск Telegram и найти новую группу...")
                 await auto_discover_dynamic_telegram_groups()
-                last_surf_time = time.time()
+
+            elif action == "IDLE":
+                print(" ☕ [Free Will] Фелисити решила просто отдохнуть и почитать ленту без публичных сообщений.")
 
         except Exception as e:
-            print(f"Social lifestyle loop note: {e}")
+            print(f"Free Will lifestyle loop note: {e}")
             await asyncio.sleep(180)
 
 async def get_real_channel_browsing_info():
