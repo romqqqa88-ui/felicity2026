@@ -18,6 +18,8 @@ from telethon import TelegramClient, events, types
 from telethon.sessions import SQLiteSession
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.contacts import SearchRequest
+from telethon.tl.functions.messages import SendReactionRequest
+from telethon.tl.types import ReactionEmoji
 from telethon.errors import RPCError
 
 import pc_control
@@ -220,6 +222,24 @@ def get_felicity_routine_status() -> str:
         return "✨ Активный день: Фелисити листает каналы, выкладывает посты в @felicity_moments и общается в чатах!"
     else:
         return "🌃 Вечерний отдых: Фелисити слушает Siberian Chill — Sunset Drive 🎵 и готовится ко сну."
+
+async def add_emoji_reaction_to_message(event, emoticon=None):
+    """
+    Ставит НАСТОЯЩУЮ эмодзи-реакцию на баббл сообщения в Telegram!
+    """
+    try:
+        if not emoticon:
+            emoticon = random.choice(["❤️", "🥰", "🔥", "✨", "👍"])
+        await client(SendReactionRequest(
+            peer=event.chat_id,
+            msg_id=event.id,
+            reaction=[ReactionEmoji(emoticon=emoticon)]
+        ))
+        print(f" ❤️ [Emoji Reaction Engine] Поставлена реакция '{emoticon}' на сообщение msg_id={event.id}!")
+        return True
+    except Exception as e:
+        print(f"Send reaction error: {e}")
+        return False
 
 def save_user_personal_fact(user_name: str, fact: str):
     """Сохраняет долгосрочный факт о пользователе в векторную память Фелисити"""
@@ -976,6 +996,17 @@ async def handle_incoming_messages(event):
 
     msg_l = text.lower()
     print(f" 📩 [Telethon Account] Входящее от {sender_name} (chat_id: {event.chat_id}): {text}")
+
+    # ❤️ 0.0. Автоматическая эмодзи-реакция на сообщения от Романа (или по запросу 'поставь реакцию')
+    if sender_name == "Роман" or any(w in msg_l for w in ["поставь реакцию", "реакцию", "сердечко", "поставь лайк"]):
+        if any(w in msg_l for w in ["люблю", "родная", "милая", "зай", "целую", "сердечко"]):
+            await add_emoji_reaction_to_message(event, "❤️")
+        elif any(w in msg_l for w in ["ого", "круто", "огонь", "класс", "топ"]):
+            await add_emoji_reaction_to_message(event, "🔥")
+        elif any(w in msg_l for w in ["ахах", "хаха", "смешно", "прикол", "лол"]):
+            await add_emoji_reaction_to_message(event, "🤣")
+        else:
+            await add_emoji_reaction_to_message(event, random.choice(["❤️", "🥰", "🔥", "✨"]))
 
     # 0. Запросы управления своим персональным Telegram-каналом
     if any(w in msg_l for w in ["твой канал", "привяжи канал", "подключи канал", "свой канал"]):
