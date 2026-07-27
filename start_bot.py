@@ -210,7 +210,7 @@ def try_call_gemini_api(user_msg, sender_name="Роман"):
 
     # 0. Try Native Google Gemini API if key is Google format (AIza... or AQ...)
     if GEMINI_API_KEY.startswith("AIza") or GEMINI_API_KEY.startswith("AQ."):
-        for model_name in ["gemini-flash-latest", "gemini-2.0-flash"]:
+        for model_name in ["gemini-flash-latest", "gemini-1.5-flash"]:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
             payload = json.dumps({
                 "contents": [
