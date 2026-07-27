@@ -208,7 +208,35 @@ def try_call_gemini_api(user_msg, sender_name="Роман"):
         messages_payload.append(past_msg)
     messages_payload.append({"role": "user", "content": user_msg})
 
-    # 0. Try GPTunnel API if key is GPTunnel format (shds-... / gptunnel_...)
+    # 0. Try Native Google Gemini API if key is Google format (AIza... or AQ...)
+    if GEMINI_API_KEY.startswith("AIza") or GEMINI_API_KEY.startswith("AQ."):
+        for model_name in ["gemini-flash-latest", "gemini-2.0-flash"]:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+            payload = json.dumps({
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": f"{sys_prompt}\n\nПользователь ({sender_name}): {user_msg}"}
+                        ]
+                    }
+                ]
+            }).encode('utf-8')
+            headers = {"Content-Type": "application/json"}
+            try:
+                req = urllib.request.Request(url, data=payload, headers=headers)
+                with urllib.request.urlopen(req, timeout=25) as resp:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    reply = data['candidates'][0]['content']['parts'][0]['text'].strip()
+                    if is_refusal(reply):
+                        continue
+                    TG_CHAT_HISTORY.append({"role": "user", "content": user_msg})
+                    TG_CHAT_HISTORY.append({"role": "assistant", "content": reply})
+                    save_chat_history()
+                    return reply
+            except Exception as e:
+                print(f"Google Gemini API ({model_name}) error: {e}")
+
+    # 0.5. Try GPTunnel API if key is GPTunnel format (shds-... / gptunnel_...)
     if GEMINI_API_KEY.startswith("shds-") or "gptunnel" in GEMINI_API_KEY:
         url = "https://gptunnel.ru/v1/chat/completions"
         headers = {
