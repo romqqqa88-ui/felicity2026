@@ -209,7 +209,35 @@ def try_call_gemini_api(user_msg, sender_name="Роман"):
         messages_payload.append(past_msg)
     messages_payload.append({"role": "user", "content": user_msg})
 
-    # 0. Try Native Google Gemini API if key is Google format (AIza... or AQ...)
+    # 0. Try Official DeepSeek API if key starts with sk- (official DeepSeek format)
+    if GEMINI_API_KEY.startswith("sk-"):
+        url = "https://api.deepseek.com/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {GEMINI_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        for attempt in range(2):
+            payload = json.dumps({
+                "model": "deepseek-chat",
+                "messages": messages_payload,
+                "temperature": 0.75
+            }).encode('utf-8')
+            try:
+                req = urllib.request.Request(url, data=payload, headers=headers)
+                with urllib.request.urlopen(req, timeout=25) as resp:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    reply = data['choices'][0]['message']['content'].strip()
+                    if is_refusal(reply):
+                        break
+                    TG_CHAT_HISTORY.append({"role": "user", "content": user_msg})
+                    TG_CHAT_HISTORY.append({"role": "assistant", "content": reply})
+                    save_chat_history()
+                    return reply
+            except Exception as e:
+                print(f"DeepSeek API (attempt {attempt+1}) error: {e}")
+                time.sleep(0.5)
+
+    # 0.2. Try Native Google Gemini API if key is Google format (AIza... or AQ...)
     if GEMINI_API_KEY.startswith("AIza") or GEMINI_API_KEY.startswith("AQ."):
         for model_name in ["gemini-flash-latest", "gemini-1.5-flash"]:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
