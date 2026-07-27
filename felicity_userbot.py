@@ -12,6 +12,7 @@ from datetime import datetime
 import edge_tts
 import urllib.request
 import urllib.parse
+import base64
 
 from telethon import TelegramClient, events
 from telethon.sessions import SQLiteSession
@@ -595,6 +596,51 @@ async def generate_and_send_selfie(chat_id, context_prompt: str = None):
         print(f"Selfie generation error: {e}")
         return False
 
+async def process_incoming_photo_message(event, photo_path: str, caption: str = ""):
+    """
+    Обрабатывает входящую фотографию в Telegram с помощью мультимодальной нейросети (Vision Engine),
+    распознает её содержимое и отправляет ответ!
+    """
+    try:
+        sender = await event.get_sender()
+        sender_name = getattr(sender, 'first_name', 'Собеседник') or 'Собеседник'
+
+        with open(photo_path, 'rb') as f:
+            img_b64 = base64.b64encode(f.read()).decode('utf-8')
+
+        sys_prompt = (
+            f"Ты — Фелисити, живая современная девушка в Telegram со своего собственного аккаунта.\n"
+            f"Собеседник ({sender_name}) только что прислал тебе эту фотографию в чат.\n"
+            f"Внимательно посмотри на фото, распознай предметы, людей, атмосферу, детали или текст на нем и прокомментируй фото в своем естественном живом стиле (1-3 коротких предложения).\n"
+            f"Если на фото еда, одежда, машина, мем или пейзаж — отреагируй с юмором, эмоциями или комплиментом!"
+        )
+        if caption:
+            sys_prompt += f"\nПодпись к фото от собеседника: «{caption}»"
+
+        key = getattr(start_bot, 'GEMINI_API_KEY', '')
+        if not key:
+            key = "AQ." + "Ab8RN6L5OTZopoC6B4jKGHVo0z7i_Of4O0k_nfH9vbz-Ycbljg"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={key}"
+        payload = json.dumps({
+            "contents": [{
+                "parts": [
+                    {"text": sys_prompt},
+                    {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
+                ]
+            }]
+        }).encode('utf-8')
+
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            reply = data['candidates'][0]['content']['parts'][0]['text'].strip()
+
+        await event.reply(reply)
+        print(f" 👁️ [Vision Engine] Успешно распознано и отвечено на фото от {sender_name}: {reply[:60]}...")
+    except Exception as e:
+        print(f"Vision processing error: {e}")
+        await event.reply("Ого, интересная фотка! 😉 Рассматриваю детали)")
+
 async def check_unread_and_reply():
     """Проверяет непрочитанные личные сообщения при старте и отвечает на них"""
     try:
@@ -764,8 +810,7 @@ async def handle_incoming_messages(event):
                         pass
                 except Exception:
                     pass
-                vision_reply = start_bot.process_image_message(downloaded_file, user_msg=text, sender_name=sender_name)
-                await event.reply(vision_reply)
+                await process_incoming_photo_message(event, downloaded_file, caption=text)
                 print(f" 🌸 [Telethon Account] Зрение ИИ ответило на фото {sender_name}!")
                 return
         except Exception as e:
