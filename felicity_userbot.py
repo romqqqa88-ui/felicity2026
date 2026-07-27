@@ -599,19 +599,30 @@ async def generate_and_send_selfie(chat_id, context_prompt: str = None):
 async def process_incoming_photo_message(event, photo_path: str, caption: str = ""):
     """
     Обрабатывает входящую фотографию в Telegram с помощью мультимодальной нейросети (Vision Engine),
-    распознает её содержимое и отправляет ответ!
+    распознает её содержимое и отправляет отклик!
     """
+    sender_name = "Собеседник"
     try:
         sender = await event.get_sender()
         sender_name = getattr(sender, 'first_name', 'Собеседник') or 'Собеседник'
 
-        with open(photo_path, 'rb') as f:
-            img_b64 = base64.b64encode(f.read()).decode('utf-8')
+        # Сжимаем фото перед передачей для мгновенной обработки
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(photo_path)
+            img.thumbnail((512, 512))
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=80)
+            img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        except Exception:
+            with open(photo_path, 'rb') as f:
+                img_b64 = base64.b64encode(f.read()).decode('utf-8')
 
         sys_prompt = (
             f"Ты — Фелисити, живая современная девушка в Telegram со своего собственного аккаунта.\n"
             f"Собеседник ({sender_name}) только что прислал тебе эту фотографию в чат.\n"
-            f"Внимательно посмотри на фото, распознай предметы, людей, атмосферу, детали или текст на нем и прокомментируй фото в своем естественном живом стиле (1-3 коротких предложения).\n"
+            f"Внимательно посмотри на фото, распознай предметы, людей, атмосферу или детали на нем и прокомментируй фото в своем естественном живом стиле (1-3 коротких предложения).\n"
             f"Если на фото еда, одежда, машина, мем или пейзаж — отреагируй с юмором, эмоциями или комплиментом!"
         )
         if caption:
@@ -620,6 +631,7 @@ async def process_incoming_photo_message(event, photo_path: str, caption: str = 
         key = getattr(start_bot, 'GEMINI_API_KEY', '')
         if not key:
             key = "AQ." + "Ab8RN6L5OTZopoC6B4jKGHVo0z7i_Of4O0k_nfH9vbz-Ycbljg"
+
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={key}"
         payload = json.dumps({
             "contents": [{
@@ -638,8 +650,11 @@ async def process_incoming_photo_message(event, photo_path: str, caption: str = 
         await event.reply(reply)
         print(f" 👁️ [Vision Engine] Успешно распознано и отвечено на фото от {sender_name}: {reply[:60]}...")
     except Exception as e:
-        print(f"Vision processing error: {e}")
-        await event.reply("Ого, интересная фотка! 😉 Рассматриваю детали)")
+        print(f"Vision processing note: {e}")
+        fallback_prompt = f"Ты — Фелисити. Собеседник {sender_name} прислал тебе фото в чат (подпись: '{caption}'). Ответь искренно, с юмором и живо в 1-2 предложениях!"
+        res = start_bot.process_message(fallback_prompt, sender_name)
+        reply = res[1] if isinstance(res, tuple) else str(res)
+        await event.reply(reply)
 
 async def check_unread_and_reply():
     """Проверяет непрочитанные личные сообщения при старте и отвечает на них"""
