@@ -514,6 +514,35 @@ async def send_real_post_or_meme_to_roman(chat_id):
         print(f"Send post error: {e}")
     return "Зашла в Telegram-канал, присмотрела интересную тему и скинула тебе ссылку! 😉"
 
+async def generate_and_send_voice_note(chat_id, text: str):
+    """
+    Генерирует живое голосовое сообщение с помощью edge_tts (ru-RU-SvetlanaNeural)
+    и отправляет его в формате Telegram Voice Note!
+    """
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        ts = int(time.time())
+        mp3_file = os.path.join(DATA_DIR, f"voice_{ts}.mp3")
+
+        clean_voice_text = re.sub(r'[\U00010000-\U0010ffff\u2600-\u27ff]', '', text).strip()
+        if not clean_voice_text:
+            clean_voice_text = text
+
+        communicate = edge_tts.Communicate(clean_voice_text, "ru-RU-SvetlanaNeural")
+        await communicate.save(mp3_file)
+
+        await client.send_file(
+            chat_id,
+            mp3_file,
+            voice_note=True,
+            caption="🎙️ Голосовое от Фелисити"
+        )
+        print(f" 🎙️ [Voice Note Engine] Голосовое сообщение успешно отправлено в chat_id {chat_id}!")
+        return True
+    except Exception as e:
+        print(f"Voice note generation error: {e}")
+        return False
+
 async def check_unread_and_reply():
     """Проверяет непрочитанные личные сообщения при старте и отвечает на них"""
     try:
@@ -717,6 +746,20 @@ async def handle_incoming_messages(event):
         topic = topic_match.group(1).strip() if topic_match else None
         res_msg = await publish_post_to_own_channel(topic=topic)
         await event.reply(res_msg)
+        return
+
+    # 0.2. Запрос на отправку НАСТОЯЩЕГО ГОЛОСОВОГО СООБЩЕНИЯ (Voice Note)
+    voice_triggers = ["голосовое", "голосовушку", "голосом", "запиши голос", "пришли голос", "поговори со мной"]
+    if any(w in msg_l for w in voice_triggers):
+        try:
+            async with client.action(event.chat_id, 'record-audio'):
+                pass
+        except Exception:
+            pass
+        voice_prompt = f"Ты — Фелисити. Напиши 1-2 предложения, которые ты скажешь голосом {sender_name}. Напиши очень естественно, тепло, с нежностью или легким юмором."
+        res = start_bot.process_message(voice_prompt, sender_name)
+        v_text = res[1] if isinstance(res, tuple) else str(res)
+        await generate_and_send_voice_note(event.chat_id, v_text)
         return
 
     # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение (кому-то в ЛС, случайному человеку или конкретному юзернейму @username)
