@@ -544,6 +544,55 @@ async def generate_and_send_voice_note(chat_id, text: str):
         print(f"Voice note generation error: {e}")
         return False
 
+async def generate_and_send_selfie(chat_id, context_prompt: str = None):
+    """
+    Генерирует уникальное качественное фото/селфи Фелисити в реальном времени
+    и отправляет его фото-файлом в Telegram!
+    """
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        ts = int(time.time())
+        seed = random.randint(100000, 999999)
+        photo_path = os.path.join(DATA_DIR, f"selfie_{ts}.jpg")
+
+        scenes = [
+            "candid selfie in cozy apartment, wearing cozy sweater, warm smile, soft indoor lighting",
+            "selfie at a warm aesthetic coffee shop, holding coffee cup, trendy casual outfit",
+            "evening street selfie, city lights bokeh background, stylish jacket, natural smile",
+            "home cozy selfie lying on couch, relaxed mood, hazel eyes, natural beauty"
+        ]
+        chosen_scene = random.choice(scenes)
+        if context_prompt and len(context_prompt) > 5:
+            chosen_scene = context_prompt
+
+        base_prompt = f"photorealistic candid selfie of a beautiful 22yo girl named Felicity, long dark blonde hair, hazel eyes, natural radiant smile, {chosen_scene}, 8k resolution, raw photo, highly detailed"
+        encoded_prompt = urllib.parse.quote(base_prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={seed}&nologo=true"
+
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            with open(photo_path, 'wb') as f:
+                f.write(resp.read())
+
+        captions = [
+            "Специально для тебя) Как я тебе? 😉",
+            "Лови селфи прямо сейчас) ✨",
+            "Сделала фотку, пока сидела отдыхала) ❤️",
+            "Лови моментальное фото) 😉"
+        ]
+        chosen_caption = random.choice(captions)
+
+        await client.send_file(
+            chat_id,
+            photo_path,
+            caption=chosen_caption
+        )
+        print(f" 📸 [Selfie Engine] Селфи успешно сгенерировано и отправлено в chat_id {chat_id}!")
+        return True
+    except Exception as e:
+        print(f"Selfie generation error: {e}")
+        return False
+
 async def check_unread_and_reply():
     """Проверяет непрочитанные личные сообщения при старте и отвечает на них"""
     try:
@@ -761,6 +810,17 @@ async def handle_incoming_messages(event):
         res = start_bot.process_message(voice_prompt, sender_name)
         v_text = res[1] if isinstance(res, tuple) else str(res)
         await generate_and_send_voice_note(event.chat_id, v_text)
+        return
+
+    # 0.25. Запрос на генерацию и отправку СЕФЛИ / ФОТО (Real-time Selfie Engine)
+    photo_triggers = ["селфи", "фотку", "фото", "покажи себя", "как выглядишь", "сфоткайся", "где ты", "что надела"]
+    if any(w in msg_l for w in photo_triggers):
+        try:
+            async with client.action(event.chat_id, 'upload-photo'):
+                pass
+        except Exception:
+            pass
+        await generate_and_send_selfie(event.chat_id)
         return
 
     # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение (кому-то в ЛС, случайному человеку или конкретному юзернейму @username)
