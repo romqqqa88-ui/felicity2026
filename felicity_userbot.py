@@ -430,6 +430,48 @@ async def autonomous_social_lifestyle_loop():
             print(f"Social lifestyle loop note: {e}")
             await asyncio.sleep(180)
 
+async def get_real_channel_browsing_info():
+    """Находит реальный канал/группу из списка подписок и последний пост"""
+    try:
+        channels = load_dynamic_channels()
+        random.shuffle(channels)
+        for ch in channels:
+            clean_ch = ch.strip().lstrip('@')
+            try:
+                messages = await client.get_messages(clean_ch, limit=5)
+                for msg in messages:
+                    if msg.text and len(msg.text.strip()) > 10:
+                        snippet = msg.text[:120].replace('\n', ' ')
+                        return f"Я сейчас как раз листаю реальный канал @{clean_ch}! Там в посте обсуждают:\n«{snippet}...»\n\nЕсли хочешь — могу скинуть тебе этот пост или мем прямо сюда!)"
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"Channel info error: {e}")
+    return "Я сейчас как раз листаю каналы про кино, мемы и новости в Telegram! Напиши «скинь», и я пришлю тебе свежий пост 😉"
+
+async def send_real_post_or_meme_to_roman(chat_id):
+    """Находит реальный пост/мем/медиа из просматриваемых каналов и пересылает или отправляет ссылку Роману"""
+    try:
+        channels = load_dynamic_channels()
+        random.shuffle(channels)
+        for ch in channels:
+            clean_ch = ch.strip().lstrip('@')
+            try:
+                messages = await client.get_messages(clean_ch, limit=10)
+                for msg in messages:
+                    if msg.media:
+                        await client.send_message(chat_id, f"Смотри, какой классный пост/мем я нашла в канале @{clean_ch}! 😉", file=msg.media)
+                        return f"Отправила тебе реальный медиа-пост из канала @{clean_ch}! 🔥"
+                    elif msg.text and len(msg.text.strip()) > 15:
+                        post_link = f"https://t.me/{clean_ch}/{msg.id}"
+                        await client.send_message(chat_id, f"Вот, держи пост из канала @{clean_ch}! 😉\n\n«{msg.text[:300]}»\n\nСсылка: {post_link}")
+                        return f"Скинула тебе пост из канала @{clean_ch}! 🔥"
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"Send post error: {e}")
+    return "Зашла в Telegram-канал, присмотрела интересную тему и скинула тебе ссылку! 😉"
+
 async def check_unread_and_reply():
     """Проверяет непрочитанные личные сообщения при старте и отвечает на них"""
     try:
@@ -663,6 +705,27 @@ async def handle_incoming_messages(event):
             dm_res = await send_real_dm_to_random_user()
             await event.reply(dm_res)
             return
+
+    # 0.6. Запросы "В каком канале сидишь?" / "Что листаешь?"
+    if any(w in msg_l for w in ["в каком канале", "где сидишь", "что листаешь", "какой канал читаешь", "какие каналы"]):
+        try:
+            async with client.action(event.chat_id, 'typing'):
+                pass
+        except Exception:
+            pass
+        info_res = await get_real_channel_browsing_info()
+        await event.reply(info_res)
+        return
+
+    # 0.65. Запросы "Скинь" / "Пришли" / "Покажи мем" / "Скинь мем" / "Скинь пост" / "Скинь ссылку"
+    if any(w in msg_l for w in ["скинь", "пришли", "покажи мем", "скинь мем", "скинь пост", "скинь ссылку", "скинь картинку", "покажи пост"]) and sender_name == "Роман":
+        try:
+            async with client.action(event.chat_id, 'typing'):
+                pass
+        except Exception:
+            pass
+        post_res = await send_real_post_or_meme_to_roman(event.chat_id)
+        return
 
     # 0.7. Запрос показать РЕАЛЬНЫЕ комментарии и переписку в группах
     if any(w in msg_l for w in ["что в комментариях", "с кем общалась в комментариях", "что комментировала", "покажи комментарии", "твои комментарии", "комментарии в группах", "что там в комментариях"]):
