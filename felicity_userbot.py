@@ -9,6 +9,7 @@ import re
 import time
 import random
 from datetime import datetime
+import edge_tts
 
 from telethon import TelegramClient, events
 from telethon.sessions import SQLiteSession
