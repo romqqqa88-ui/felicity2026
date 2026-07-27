@@ -199,6 +199,48 @@ def get_learned_summary():
             pass
     return "Я постоянно читаю посты и группы, развиваюсь и запоминаю новые мысли!"
 
+USER_MEMORY_FILE = os.path.join(DATA_DIR, 'user_memory.json')
+
+def save_user_personal_fact(user_name: str, fact: str):
+    """Сохраняет долгосрочный факт о пользователе в векторную память Фелисити"""
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        memory_db = {}
+        if os.path.exists(USER_MEMORY_FILE):
+            try:
+                with open(USER_MEMORY_FILE, 'r', encoding='utf-8') as f:
+                    memory_db = json.load(f)
+            except Exception:
+                memory_db = {}
+
+        u_key = user_name.lower().strip()
+        if u_key not in memory_db:
+            memory_db[u_key] = {"name": user_name, "facts": []}
+
+        if fact not in memory_db[u_key]["facts"]:
+            memory_db[u_key]["facts"].append(fact)
+            memory_db[u_key]["facts"] = memory_db[u_key]["facts"][-50:]
+
+        with open(USER_MEMORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(memory_db, f, ensure_ascii=False, indent=2)
+        print(f" 🧠 [Vector Memory Engine] Запомнен факт о {user_name}: «{fact}»")
+    except Exception as e:
+        print(f"Save user memory error: {e}")
+
+def get_user_personal_facts(user_name: str) -> str:
+    """Возвращает сведение всех известных долгосрочных фактов о пользователе"""
+    if os.path.exists(USER_MEMORY_FILE):
+        try:
+            with open(USER_MEMORY_FILE, 'r', encoding='utf-8') as f:
+                memory_db = json.load(f)
+                u_key = user_name.lower().strip()
+                if u_key in memory_db and memory_db[u_key].get("facts"):
+                    facts = memory_db[u_key]["facts"]
+                    return "\n".join([f"• {fact}" for fact in facts])
+        except Exception:
+            pass
+    return "Пока я запоминаю твой характер и наши диалоги! Расскажи мне что-то о себе (что любишь, кем работаешь), и я навсегда это запомню! 😉"
+
 async def join_telegram_channel(channel_target):
     """Подписывает Фелисити на публичный Telegram канал или группу"""
     try:
@@ -973,6 +1015,16 @@ async def handle_incoming_messages(event):
             pass
         await generate_and_send_music_track(event.chat_id)
         return
+
+    # 0.35. Запрос или сохранение фактов о пользователе (Long-Term Vector Memory Engine)
+    if any(w in msg_l for w in ["что ты обо мне помнишь", "что ты обо мне знаешь", "что ты помнишь", "вспомни обо мне", "твоя память"]):
+        facts_summary = get_user_personal_facts(sender_name)
+        await event.reply(f"Вот что я сохранила в своей памяти о тебе, {sender_name}: 🧠✨\n\n{facts_summary}")
+        return
+
+    # Авто-извлечение и запоминание личных фактов ("я люблю", "я работаю", "живу в")
+    if any(w in msg_l for w in ["я люблю", "мне нравится", "я работаю", "моя профессия", "я живу в", "мой любимый"]):
+        save_user_personal_fact(sender_name, text)
 
     # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение (кому-то в ЛС, случайному человеку или конкретному юзернейму @username)
     dm_triggers = [
