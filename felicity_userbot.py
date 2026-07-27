@@ -201,6 +201,26 @@ def get_learned_summary():
 
 USER_MEMORY_FILE = os.path.join(DATA_DIR, 'user_memory.json')
 
+def is_felicity_sleeping() -> bool:
+    """
+    Проверяет режим сна Фелисити (с 01:00 до 08:30).
+    В этот период Фелисити спит как реальная девушка.
+    """
+    current_hour = datetime.now().hour
+    return 1 <= current_hour < 8
+
+def get_felicity_routine_status() -> str:
+    """Возвращает текущее живое состояние и режим дня Фелисити"""
+    hour = datetime.now().hour
+    if 1 <= hour < 8:
+        return "🌙 Фелисити сейчас спит 😴 (Режим сна: 01:00 — 08:30). Напиши ей, и она ответит как проснется!"
+    elif 8 <= hour < 10:
+        return "☕️ Утренний режим: Фелисити проснулась, слушает музыку и разбирает сообщения в Telegram!"
+    elif 10 <= hour < 23:
+        return "✨ Активный день: Фелисити листает каналы, выкладывает посты в @felicity_moments и общается в чатах!"
+    else:
+        return "🌃 Вечерний отдых: Фелисити слушает Siberian Chill — Sunset Drive 🎵 и готовится ко сну."
+
 def save_user_personal_fact(user_name: str, fact: str):
     """Сохраняет долгосрочный факт о пользователе в векторную память Фелисити"""
     try:
@@ -1025,6 +1045,12 @@ async def handle_incoming_messages(event):
     # Авто-извлечение и запоминание личных фактов ("я люблю", "я работаю", "живу в")
     if any(w in msg_l for w in ["я люблю", "мне нравится", "я работаю", "моя профессия", "я живу в", "мой любимый"]):
         save_user_personal_fact(sender_name, text)
+
+    # 0.4. Запрос на режим дня, сон или статус жизненного распорядка (Routine & Sleep Engine)
+    if any(w in msg_l for w in ["ты спишь", "спишь", "режим дня", "расписание", "чем занята", "что делаешь"]):
+        status = get_felicity_routine_status()
+        await event.reply(status)
+        return
 
     # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение (кому-то в ЛС, случайному человеку или конкретному юзернейму @username)
     dm_triggers = [
