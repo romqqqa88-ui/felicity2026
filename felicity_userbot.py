@@ -10,6 +10,8 @@ import time
 import random
 from datetime import datetime
 import edge_tts
+import urllib.request
+import urllib.parse
 
 from telethon import TelegramClient, events
 from telethon.sessions import SQLiteSession
