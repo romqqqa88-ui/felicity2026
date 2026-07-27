@@ -625,7 +625,7 @@ async def process_incoming_photo_message(event, photo_path: str, caption: str = 
             "contents": [{
                 "parts": [
                     {"text": sys_prompt},
-                    {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
+                    {"inlineData": {"mimeType": "image/jpeg", "data": img_b64}}
                 ]
             }]
         }).encode('utf-8')
