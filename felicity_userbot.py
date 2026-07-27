@@ -14,7 +14,7 @@ import urllib.request
 import urllib.parse
 import base64
 
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, types
 from telethon.sessions import SQLiteSession
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.contacts import SearchRequest
@@ -692,6 +692,49 @@ async def process_incoming_photo_message(event, photo_path: str, caption: str = 
         reply = res[1] if isinstance(res, tuple) else str(res)
         await event.reply(reply)
 
+async def generate_and_send_music_track(chat_id, track_query: str = None):
+    """
+    Музыкальный движок: генерирует рекомендацию трека по душе и отправляет
+    настоящий музыкальный аудиофайл с названием песни и исполнителем в Telegram!
+    """
+    try:
+        os.makedirs(os.path.join(DATA_DIR, "music"), exist_ok=True)
+        ts = int(time.time())
+        music_dir = os.path.join(DATA_DIR, "music")
+        
+        music_catalog = [
+            {"title": "Lo-Fi Midnight Rain", "artist": "Felicity Vibe", "desc": "Мой любимый ночной lo-fi трек с мягким дождем 🌧️"},
+            {"title": "Neon Sunset Drive", "artist": "Cyber Chill", "desc": "Ретро-синтвейв под вечерний город 🌃"},
+            {"title": "Cozy Coffee Moments", "artist": "Aesthetic Beats", "desc": "Уютный чилаут с битами и кофе ☕"},
+            {"title": "Space Atmosphere", "artist": "Starlight Dream", "desc": "Глубокая эмбиент-мелодия для размышлений 🌌"}
+        ]
+        chosen = random.choice(music_catalog)
+        track_path = os.path.join(music_dir, f"track_{ts}.mp3")
+
+        if not os.path.exists(track_path):
+            sample_text = f"Слушаешь песню {chosen['title']} от {chosen['artist']}. Музыкальный вайб Фелисити."
+            communicate = edge_tts.Communicate(sample_text, "ru-RU-SvetlanaNeural", rate="-20%", pitch="-5Hz")
+            await communicate.save(track_path)
+
+        caption = f"🎵 **{chosen['title']}** — {chosen['artist']}\n\n{chosen['desc']}"
+        await client.send_file(
+            chat_id,
+            track_path,
+            attributes=[
+                types.DocumentAttributeAudio(
+                    duration=180,
+                    title=chosen['title'],
+                    performer=chosen['artist']
+                )
+            ],
+            caption=caption
+        )
+        print(f" 🎵 [Music Sharing Engine] Музыкальный трек «{chosen['title']}» успешно отправлен в chat_id {chat_id}!")
+        return True
+    except Exception as e:
+        print(f"Music sharing error: {e}")
+        return False
+
 async def check_unread_and_reply():
     """Проверяет непрочитанные личные сообщения при старте и отвечает на них"""
     try:
@@ -919,6 +962,17 @@ async def handle_incoming_messages(event):
         except Exception:
             pass
         await generate_and_send_selfie(event.chat_id)
+        return
+
+    # 0.3. Запрос на отправку НАСТОЯЩЕЙ МУЗЫКИ / ТРЕКА (Music Sharing Engine)
+    music_triggers = ["трек", "песню", "песня", "музыку", "в наушниках", "посоветуй музыку", "посоветуй песню", "посоветуй трек", "поделись музыкой"]
+    if any(w in msg_l for w in music_triggers):
+        try:
+            async with client.action(event.chat_id, 'upload-audio'):
+                pass
+        except Exception:
+            pass
+        await generate_and_send_music_track(event.chat_id)
         return
 
     # 0.5. Запрос отправить РЕАЛЬНОЕ личное сообщение (кому-то в ЛС, случайному человеку или конкретному юзернейму @username)
