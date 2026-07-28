@@ -353,6 +353,9 @@ async def comment_on_channel_post(channel_target):
     """Оставляет разумный человеческий комментарий к посту в Telegram канале/группе и запоминает его"""
     clean_target = channel_target.replace("https://t.me/", "").replace("@", "").strip()
     try:
+        # 0. ОБЯЗАТЕЛЬНО ПОДПИСЫВАЕМСЯ И ВСТУПАЕМ В ГРУППУ В TELEGRAM!
+        await join_telegram_channel(clean_target)
+
         # 1. Пробуем оставить комментарий через ветку обсуждений канала (get_discussion_message)
         messages = await client.get_messages(clean_target, limit=6)
         for msg in messages:
@@ -372,7 +375,7 @@ async def comment_on_channel_post(channel_target):
                     save_real_comment(clean_target, msg.text, comment_text, comment_msg_id=sent.id)
                     save_learned_fact(f"Оставила комментарий под постом про «{msg.text[:80]}...»", source=f"канал @{clean_target}")
 
-                    return f"Я только что РЕАЛЬНО написала комментарий под постом в группе @{clean_target}! 💬\n\nВот мой комментарий:\n«{comment_text}»"
+                    return f"Я только что РЕАЛЬНО вступила в группу @{clean_target} и написала комментарий под постом! 💬\n\nВот мой комментарий:\n«{comment_text}»"
                 except Exception:
                     pass
 
@@ -413,7 +416,7 @@ def load_dynamic_channels():
                     return data
         except Exception:
             pass
-    return ["kinofilm_chat", "book_chat_ru", "it_chat_ru", "chat_films", "discussion_ru", "habr_com", "rbc_news", "mash", "kinopoisk", "postnauka", "tproger"]
+    return ["tproger", "habr_com", "rbc_news", "mash", "kinopoisk", "postnauka", "nplusone", "vcru", "durov", "geografiya_mira"]
 
 def save_dynamic_channel(channel_username):
     channels = load_dynamic_channels()
