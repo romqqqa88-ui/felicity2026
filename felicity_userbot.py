@@ -310,7 +310,7 @@ def save_real_comment(channel_name, post_text, comment_text, comment_msg_id=0, i
             "comment_msg_id": comment_msg_id,
             "is_reply": is_reply,
             "user_name": user_name,
-            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
         comments.append(entry)
         comments = comments[-30:]
