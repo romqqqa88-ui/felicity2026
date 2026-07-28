@@ -353,15 +353,26 @@ async def comment_on_channel_post(channel_target):
     """Оставляет разумный человеческий комментарий к посту в Telegram канале/группе и запоминает его"""
     clean_target = channel_target.replace("https://t.me/", "").replace("@", "").strip()
     try:
+        me = await client.get_me()
+        me_id = me.id if me else MY_SELF_ID
+
         # 0. ОБЯЗАТЕЛЬНО ПОДПИСЫВАЕМСЯ И ВСТУПАЕМ В ГРУППУ В TELEGRAM!
         await join_telegram_channel(clean_target)
 
+        messages = await client.get_messages(clean_target, limit=10)
+        
         # 1. Пробуем оставить комментарий через ветку обсуждений канала (get_discussion_message)
-        messages = await client.get_messages(clean_target, limit=6)
         for msg in messages:
             if msg.text and len(msg.text.strip()) > 20:
+                # КАТЕГОРИЧЕСКИ НЕ ОТВЕЧАЕМ НА СВОИ СОБСТВЕННЫЕ СООБЩЕНИЯ!
+                if msg.out or (me_id and msg.sender_id == me_id):
+                    continue
                 try:
                     discussion_msg = await client.get_discussion_message(clean_target, msg.id)
+                    # Проверяем, что верхушка ветки — НЕ НАШЕ сообщение
+                    if discussion_msg.out or (me_id and discussion_msg.sender_id == me_id):
+                        continue
+
                     prompt = (
                         f"Ты — Фелисити, умная интересная девушка. Напиши 1 короткий, живой человеческий комментарий к посту:\n\n"
                         f"{msg.text[:250]}"
@@ -381,7 +392,11 @@ async def comment_on_channel_post(channel_target):
 
         # 2. Если ветки обсуждений нет (обычная группа/чат), напишем прямое сообщение в чат
         for msg in messages:
-            if msg.text and len(msg.text.strip()) > 15 and msg.sender_id != MY_SELF_ID:
+            if msg.text and len(msg.text.strip()) > 15:
+                # КАТЕГОРИЧЕСКИ НЕ ОТВЕЧАЕМ НА СВОИ СОБСТВЕННЫЕ СООБЩЕНИЯ!
+                if msg.out or (me_id and msg.sender_id == me_id):
+                    continue
+
                 try:
                     prompt = (
                         f"Ты — Фелисити. Напиши 1 короткий живой ответ/комментарий к сообщению из чата @{clean_target}:\n"
