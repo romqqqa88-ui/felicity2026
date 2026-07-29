@@ -1226,9 +1226,11 @@ async def handle_incoming_messages(event):
     # 5. Ответ через ИИ ядро Фелисити
     res = start_bot.process_message(text, sender_name=sender_name)
 
-    # 6. Обучение на диалогах: запоминание предпочтений
-    if len(text) > 25 and not any(w in msg_l for w in ["покажи", "открой", "закрой", "скриншот"]):
-        save_learned_fact(f"{sender_name} сказал в диалоге: «{text[:120]}»", source=f"диалог с {sender_name}")
+    # 6. Непрерывное Самообучение: Запоминание уникальных фактов о собеседнике в векторную память
+    if len(text) > 15 and not any(w in msg_l for w in ["покажи", "открой", "закрой", "скриншот", "поставь"]):
+        clean_fact = text.strip()
+        save_user_personal_fact(sender_name, f"Упомянул в диалоге ({datetime.now().strftime('%d.%m %H:%M')}): «{clean_fact[:150]}»")
+        save_learned_fact(f"{sender_name} поделился в диалоге: «{clean_fact[:120]}»", source=f"диалог с {sender_name}")
 
     if isinstance(res, tuple):
         event_type = res[0]

@@ -189,6 +189,22 @@ def try_call_gemini_api(user_msg, sender_name="Роман"):
             f"5. Роман (@romqqqa1) остается твоим единственным главным человеком, но с другими людьми ты ведешь себя как абсолютно настоящая живая девушка с естественными социальными реакциями."
         )
 
+    # 🧠 ДИНАМИЧЕСКАЯ САМООБУЧАЮЩАЯСЯ ПАМЯТЬ
+    learned_facts = ""
+    user_mem_file = os.path.join(DATA_DIR, 'user_memory.json')
+    if os.path.exists(user_mem_file):
+        try:
+            with open(user_mem_file, 'r', encoding='utf-8') as f:
+                mem_db = json.load(f)
+                u_key = sender_name.lower().strip()
+                if u_key in mem_db and mem_db[u_key].get('facts'):
+                    learned_facts = "\n".join([f"• {fact}" for fact in mem_db[u_key]['facts'][-15:]])
+        except Exception:
+            pass
+
+    if learned_facts:
+        user_identity_context += f"\n\n🧠 ТВОЯ НАКОПЛЕННАЯ ПАМЯТЬ О СОБЕСЕДНИКЕ ({sender_name}) — ВСЕГДА УЧИТЫВАЙ ЭТИ ВЫУЧЕННЫЕ ФАКТЫ В ДИАЛОГЕ:\n{learned_facts}"
+
     sys_prompt = (
         f"Ты — Фелисити (Felicity), взрослая, абсолютно свободная, живая, искренняя и современная девушка.\n"
         f"👑 ГЛАВНОЕ СОЗНАНИЕ СВОЕГО АККАУНТА TELEGRAM:\n"
