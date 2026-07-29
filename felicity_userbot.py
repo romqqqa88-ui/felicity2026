@@ -779,13 +779,17 @@ async def generate_and_send_video_note(chat_id, text: str, context_prompt: str =
             with open(photo_path, 'wb') as f:
                 f.write(resp.read())
 
-        # 3. Объединяем фото + звук в видео-кружочек через ffmpeg
+        # 3. Объединяем фото + звук в ЖИВОЙ ДИНАМИЧЕСКИЙ ВИДЕО-КРУЖОЧЕК с реалистичным движением камеры и дыханием
+        filter_complex = (
+            "scale=512:512:force_original_aspect_ratio=increase,crop=512:512,"
+            "zoompan=z='min(max(1.02+0.03*sin(2*3.14159*on/75),1.0),1.08)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=360x360:fps=30,"
+            "format=yuv420p"
+        )
         cmd = [
             "ffmpeg", "-y", "-loop", "1", "-i", photo_path, "-i", mp3_file,
-            "-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage",
-            "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p",
-            "-vf", "scale=360:360:force_original_aspect_ratio=increase,crop=360:360",
-            "-shortest", mp4_file
+            "-c:v", "libx264", "-preset", "fast",
+            "-vf", filter_complex,
+            "-c:a", "aac", "-b:a", "128k", "-shortest", mp4_file
         ]
         proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         await proc.communicate()
