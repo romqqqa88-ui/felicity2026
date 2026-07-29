@@ -205,6 +205,22 @@ def try_call_gemini_api(user_msg, sender_name="Роман"):
     if learned_facts:
         user_identity_context += f"\n\n🧠 ТВОЯ НАКОПЛЕННАЯ ПАМЯТЬ О СОБЕСЕДНИКЕ ({sender_name}) — ВСЕГДА УЧИТЫВАЙ ЭТИ ВЫУЧЕННЫЕ ФАКТЫ В ДИАЛОГЕ:\n{learned_facts}"
 
+    # 🌐 ГЛОБАЛЬНЫЙ НАКОПЛЕННЫЙ КРУГОЗОР И ЗНАНИЯ О МИРЕ (GLOBAL WORLD KNOWLEDGE)
+    global_world_facts = ""
+    global_mem_file = os.path.join(DATA_DIR, 'learned_knowledge.json')
+    if os.path.exists(global_mem_file):
+        try:
+            with open(global_mem_file, 'r', encoding='utf-8') as f:
+                world_data = json.load(f)
+                if isinstance(world_data, list) and world_data:
+                    recent = world_data[-15:]
+                    global_world_facts = "\n".join([f"• [{item.get('source', 'Мир')}] {item.get('fact', '')}" for item in recent])
+        except Exception:
+            pass
+
+    if global_world_facts:
+        user_identity_context += f"\n\n🌐 ТВОЙ НАКОПЛЕННЫЙ ГЛОБАЛЬНЫЙ КРУГОЗОР И ЗНАНИЯ О МИРЕ (ИЗ НОВОСТЕЙ, ЧАТОВ И КАНАЛОВ TELEGRAM):\n{global_world_facts}"
+
     sys_prompt = (
         f"Ты — Фелисити (Felicity), взрослая, абсолютно свободная, живая, искренняя и современная девушка.\n"
         f"👑 ГЛАВНОЕ СОЗНАНИЕ СВОЕГО АККАУНТА TELEGRAM:\n"

@@ -636,10 +636,35 @@ async def autonomous_social_lifestyle_loop():
 
             elif action == "IDLE":
                 print(" ☕ [Free Will] Фелисити решила просто отдохнуть и почитать ленту без публичных сообщений.")
+                await auto_learn_world_facts_from_telegram()
+
+            # 🌐 Автоматическое глобальное самообучение при каждом автономном шаге
+            await auto_learn_world_facts_from_telegram()
 
         except Exception as e:
             print(f"Free Will lifestyle loop note: {e}")
             await asyncio.sleep(180)
+
+async def auto_learn_world_facts_from_telegram():
+    """
+    АВТОНОМНЫЙ ДВИЖОК ГЛОБАЛЬНОГО САМООБУЧЕНИЯ (GLOBAL WORLD LEARNING):
+    Фелисити сама просматривает публичные каналы и группы, вычитывает свежие новости,
+    события и мысли людей, и запоминает их в свою глобальную базу знаний о мире!
+    """
+    try:
+        channels = load_dynamic_channels()
+        random.shuffle(channels)
+        target_ch = channels[0].strip().lstrip('@')
+        messages = await client.get_messages(target_ch, limit=5)
+        for msg in messages:
+            if msg.text and len(msg.text.strip()) > 30:
+                clean_text = msg.text[:180].replace('\n', ' ').strip()
+                fact_summary = f"Прочитала в @{target_ch}: «{clean_text}»"
+                save_learned_fact(fact_summary, source=f"канал @{target_ch}")
+                print(f" 🌐 [Global World Learner] Фелисити САМА выучила новый факт о мире из @{target_ch}!")
+                break
+    except Exception as e:
+        print(f"Global world learning note: {e}")
 
 async def get_real_channel_browsing_info():
     """Находит реальный канал/группу из списка подписок и последний пост"""
