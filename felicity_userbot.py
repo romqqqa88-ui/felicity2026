@@ -1072,16 +1072,23 @@ async def handle_incoming_messages(event):
     msg_l = text.lower()
     print(f" 📩 [Telethon Account] Входящее от {sender_name} (chat_id: {event.chat_id}): {text}")
 
-    # ❤️ 0.0. Автоматическая эмодзи-реакция на сообщения от Романа (или по запросу 'поставь реакцию')
-    if sender_name == "Роман" or any(w in msg_l for w in ["поставь реакцию", "реакцию", "сердечко", "поставь лайк"]):
-        if any(w in msg_l for w in ["люблю", "родная", "милая", "зай", "целую", "сердечко"]):
-            await add_emoji_reaction_to_message(event, "❤️")
-        elif any(w in msg_l for w in ["ого", "круто", "огонь", "класс", "топ"]):
-            await add_emoji_reaction_to_message(event, "🔥")
-        elif any(w in msg_l for w in ["ахах", "хаха", "смешно", "прикол", "лол"]):
-            await add_emoji_reaction_to_message(event, "🤣")
-        else:
-            await add_emoji_reaction_to_message(event, random.choice(["❤️", "🥰", "🔥", "✨"]))
+    # ❤️ 0.0. Естественные живые эмодзи-реакции (только по эмоциям, запросу или редкой вероятности ~18%)
+    is_explicit_reaction_request = any(w in msg_l for w in ["поставь реакцию", "реакцию", "сердечко", "поставь лайк", "лайкни"])
+    has_warm_trigger = any(w in msg_l for w in ["люблю", "родная", "милая", "зай", "целую", "сердечко", "обнимаю", "скучаю"])
+    has_cool_trigger = any(w in msg_l for w in ["ого", "круто", "огонь", "класс", "топ", "супер", "пушка"])
+    has_funny_trigger = any(w in msg_l for w in ["ахах", "хаха", "смешно", "прикол", "лол", "угар"])
+
+    if is_explicit_reaction_request:
+        await add_emoji_reaction_to_message(event, random.choice(["❤️", "🥰", "🔥", "✨"]))
+    elif has_warm_trigger:
+        await add_emoji_reaction_to_message(event, random.choice(["❤️", "🥰"]))
+    elif has_cool_trigger:
+        await add_emoji_reaction_to_message(event, random.choice(["🔥", "👍"]))
+    elif has_funny_trigger:
+        await add_emoji_reaction_to_message(event, "🤣")
+    elif sender_name == "Роман" and random.random() < 0.18:
+        # Небольшая спонтанная живая вероятность (18%) поставить реакцию
+        await add_emoji_reaction_to_message(event, random.choice(["❤️", "✨", "🔥"]))
 
     # 0. Запросы управления своим персональным Telegram-каналом
     if any(w in msg_l for w in ["твой канал", "привяжи канал", "подключи канал", "свой канал"]):
