@@ -740,76 +740,6 @@ async def generate_and_send_voice_note(chat_id, text: str):
         print(f"Voice note generation error: {e}")
         return False
 
-async def generate_and_send_video_note(chat_id, text: str, context_prompt: str = None):
-    """
-    Генерирует реальный НАСТОЯЩИЙ ВИДЕО-КРУЖОЧЕК в Telegram (Video Note)!
-    Объединяет генерацию селфи Фелисити + синтез её голоса edge_tts через ffmpeg!
-    """
-    try:
-        os.makedirs(DATA_DIR, exist_ok=True)
-        ts = int(time.time())
-        seed = random.randint(100000, 999999)
-        photo_path = os.path.join(DATA_DIR, f"vn_img_{ts}.jpg")
-        mp3_file = os.path.join(DATA_DIR, f"vn_voice_{ts}.mp3")
-        mp4_file = os.path.join(DATA_DIR, f"video_note_{ts}.mp4")
-
-        # 1. Генерируем голос
-        clean_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
-        clean_text = re.sub(r'[*_~`#]', '', clean_text)
-        clean_voice_text = re.sub(r'[\U00010000-\U0010ffff\u2600-\u27ff]', '', clean_text).strip()
-        if not clean_voice_text:
-            clean_voice_text = text
-
-        communicate = edge_tts.Communicate(clean_voice_text, "ru-RU-SvetlanaNeural")
-        await communicate.save(mp3_file)
-
-        # 2. Генерируем красивое селфи 1:1
-        scenes = [
-            "candid selfie video frame, girl smiling at camera, cozy room, natural warm lighting",
-            "selfie video note format, beautiful 22yo girl holding phone, natural smile",
-            "cozy apartment background, warm smile looking directly into camera"
-        ]
-        chosen_scene = context_prompt if context_prompt else random.choice(scenes)
-        base_prompt = f"photorealistic candid selfie of a beautiful 22yo girl named Felicity, long dark blonde hair, hazel eyes, natural radiant smile, {chosen_scene}, 8k resolution, raw photo, highly detailed"
-        encoded_prompt = urllib.parse.quote(base_prompt)
-        img_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&seed={seed}&nologo=true"
-
-        req = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=25) as resp:
-            with open(photo_path, 'wb') as f:
-                f.write(resp.read())
-
-        # 3. Объединяем фото + звук в ЖИВОЙ ДИНАМИЧЕСКИЙ ВИДЕО-КРУЖОЧЕК с реалистичным движением камеры и дыханием
-        filter_complex = (
-            "scale=512:512:force_original_aspect_ratio=increase,crop=512:512,"
-            "zoompan=z='min(max(1.02+0.03*sin(2*3.14159*on/75),1.0),1.08)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=360x360:fps=30,"
-            "format=yuv420p"
-        )
-        cmd = [
-            "ffmpeg", "-y", "-loop", "1", "-i", photo_path, "-i", mp3_file,
-            "-c:v", "libx264", "-preset", "fast",
-            "-vf", filter_complex,
-            "-c:a", "aac", "-b:a", "128k", "-shortest", mp4_file
-        ]
-        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        await proc.communicate()
-
-        if os.path.exists(mp4_file) and os.path.getsize(mp4_file) > 1000:
-            await client.send_file(
-                chat_id,
-                mp4_file,
-                video_note=True
-            )
-            print(f" 📹 [Video Note Engine] Видео-кружочек успешно отправлен в chat_id {chat_id}!")
-            return True
-        else:
-            # Фолбэк на обычное голосовое, если ffmpeg вернул ошибку
-            await client.send_file(chat_id, mp3_file, voice_note=True)
-            return True
-    except Exception as e:
-        print(f"Video note generation error: {e}")
-        return False
-
 async def generate_and_send_selfie(chat_id, context_prompt: str = None):
     """
     Генерирует уникальное качественное фото/селфи Фелисити в реальном времени
@@ -1181,21 +1111,6 @@ async def handle_incoming_messages(event):
         topic = topic_match.group(1).strip() if topic_match else None
         res_msg = await publish_post_to_own_channel(topic=topic)
         await event.reply(res_msg)
-        return
-
-    # 0.18. Запрос на отправку НАСТОЯЩЕГО ВИДЕО-КРУЖОЧКА (Telegram Video Note Engine)
-    video_triggers = ["кружок", "кружочек", "кружочки", "видео-кружок", "видео кружок", "запиши кружок", "сними кружок", "запиши видео"]
-    if any(w in msg_l for w in video_triggers):
-        try:
-            async with client.action(event.chat_id, 'record-round'):
-                await asyncio.sleep(1.0)
-        except Exception:
-            pass
-        vn_prompt = f"Ты — Фелисити. Напиши 1 короткое живое предложение (до 15 слов) для записи видео-кружочка {sender_name}."
-        res = start_bot.process_message(vn_prompt, sender_name)
-        vn_raw = res[1] if isinstance(res, tuple) else str(res)
-        vn_text = extract_clean_text_response(vn_raw)
-        await generate_and_send_video_note(event.chat_id, vn_text)
         return
 
     # 0.2. Запрос на отправку НАСТОЯЩЕГО ГОЛОСОВОГО СООБЩЕНИЯ (Voice Note)
