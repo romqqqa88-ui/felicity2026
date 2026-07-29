@@ -378,7 +378,8 @@ async def comment_on_channel_post(channel_target):
                         f"{msg.text[:250]}"
                     )
                     res = start_bot.process_message(prompt, "Фелисити")
-                    comment_text = res[1] if isinstance(res, tuple) else str(res)
+                    comment_raw = res[1] if isinstance(res, tuple) else str(res)
+                    comment_text = extract_clean_text_response(comment_raw)
 
                     sent = await client.send_message(discussion_msg.chat_id, comment_text, reply_to=discussion_msg.id)
                     print(f" 💬 [Real Comment Success] Оставила комментарий под постом в @{clean_target}: {comment_text}")
@@ -403,7 +404,8 @@ async def comment_on_channel_post(channel_target):
                         f"«{msg.text[:200]}»"
                     )
                     res = start_bot.process_message(prompt, "Фелисити")
-                    comment_text = res[1] if isinstance(res, tuple) else str(res)
+                    comment_raw = res[1] if isinstance(res, tuple) else str(res)
+                    comment_text = extract_clean_text_response(comment_raw)
 
                     sent = await client.send_message(clean_target, comment_text, reply_to=msg.id)
                     print(f" 💬 [Real Group Reply Success] Ответила в чате @{clean_target}: {comment_text}")
@@ -498,6 +500,29 @@ def save_last_pm_time(ts):
 
 TARGET_USER_HANDLE = "romqqqa1"
 
+def extract_clean_text_response(text: str) -> str:
+    """
+    Извлекает ЧИСТЫЙ человеческий текст из ответа ИИ, если модель случайно выплюнула JSON структуры или мыслеформы!
+    """
+    if not text:
+        return ""
+    text = text.strip()
+    if text.startswith('{') and text.endswith('}'):
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict):
+                for k in ['message', 'comment_text', 'reply', 'text', 'response']:
+                    if k in data and data[k]:
+                        return str(data[k]).strip()
+        except Exception:
+            pass
+    match = re.search(r'"(?:message|reply|comment_text|text)"\s*:\s*"([^"]+)"', text)
+    if match:
+        return match.group(1).strip()
+        
+    text = re.sub(r'\{[^{}]*\"thought\"[^{}]*\}', '', text, flags=re.DOTALL).strip()
+    return text
+
 async def auto_send_proactive_pm_to_roman():
     """
     100% СПОНТАННЫЙ ИНИЦИАТИВНЫЙ ДВИЖОК БЕЗ ШАБЛОНОВ:
@@ -517,12 +542,16 @@ async def auto_send_proactive_pm_to_roman():
         ]
         chosen_prompt = random.choice(motivations)
         res = start_bot.process_message(chosen_prompt, "Роман")
-        msg_text = res[1] if isinstance(res, tuple) else str(res)
+        msg_raw = res[1] if isinstance(res, tuple) else str(res)
+        msg_text = extract_clean_text_response(msg_raw)
 
         # Очищаем если модель случайно сгенерировала шаблоны "Привет, Рома"
         msg_text = re.sub(r'^(Привет|Приветик|Привет,?\s*Роман|Ром,?\s*привет|Ромаааа,?\s*приветик)[!.,\s]*', '', msg_text, flags=re.IGNORECASE).strip()
         if msg_text:
             msg_text = msg_text[0].upper() + msg_text[1:]
+
+        if not msg_text:
+            return
 
         await client.send_message(TARGET_USER_HANDLE, msg_text)
         save_last_pm_time(time.time())
@@ -1205,11 +1234,14 @@ async def handle_incoming_messages(event):
         event_type = res[0]
         if event_type == "PHOTO_EVENT":
             photo_path, caption = res[1], res[2]
-            await client.send_file(event.chat_id, photo_path, caption=caption)
+            clean_cap = extract_clean_text_response(caption)
+            await client.send_file(event.chat_id, photo_path, caption=clean_cap)
         else:
-            await event.reply(res[1])
+            clean_reply = extract_clean_text_response(res[1])
+            await event.reply(clean_reply)
     else:
-        await event.reply(str(res))
+        clean_reply = extract_clean_text_response(str(res))
+        await event.reply(clean_reply)
 
     print(f" 🌸 [Telethon Account] Успешно отвечено {sender_name}!")
 
