@@ -664,7 +664,10 @@ async def generate_and_send_voice_note(chat_id, text: str):
         ts = int(time.time())
         mp3_file = os.path.join(DATA_DIR, f"voice_{ts}.mp3")
 
-        clean_voice_text = re.sub(r'[\U00010000-\U0010ffff\u2600-\u27ff]', '', text).strip()
+        # Очистка разметки Markdown и смайлов для безупречного звучания голоса
+        clean_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+        clean_text = re.sub(r'[*_~`#]', '', clean_text)
+        clean_voice_text = re.sub(r'[\U00010000-\U0010ffff\u2600-\u27ff]', '', clean_text).strip()
         if not clean_voice_text:
             clean_voice_text = text
 
